@@ -1,9 +1,8 @@
 """
-Testing the absorption material on 1 sphere with a cone beam
+s Testing the absorption material on 1 sphere with a cone beam
 """
 
 import logging
-
 logging.getLogger('trimesh').disabled = True
 logging.getLogger('shapely.geos').disabled = True
 logging.getLogger('matplotlib').setLevel(logging.CRITICAL)
@@ -76,14 +75,20 @@ light.translate((0.0, 0.0, 3))
 light.rotate(np.pi, [1, 0, 0])
 scene = Scene(world)
 np.random.seed(0)
-vis = MeshcatRenderer(wireframe=True, open_browser=True)
-vis.render(scene)
-for ray in scene.emit(20):
+# vis = MeshcatRenderer(wireframe=True, open_browser=True)
+# vis.render(scene)
+positions = []
+for ray in scene.emit(4):
     steps = photon_tracer.follow(scene, ray)
     path, decisions = zip(*steps)
-    vis.add_ray_path(path)
-    print(path, decisions)
-vis.render(scene)
+    positions_ray = []
+    for ray in path:
+        positions_ray.append(ray.position)
+    positions.append(positions_ray)
+    # for position in path[0].position
+    # vis.add_ray_path(path)
+
+# vis.render(scene)
 import time
-time.sleep(10)
+# time.sleep(10)
 # vis.vis.jupyter_cell()
