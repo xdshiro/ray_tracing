@@ -31,21 +31,6 @@ logging.getLogger('shapely.geos').disabled = True
 logging.getLogger('matplotlib').setLevel(logging.CRITICAL)
 
 
-x=np.array([1., 2., 3., 5.])
-
-
-def surface(x, a=1, alpha=0.65):
-    x *= 1e-3
-
-    return 3 * alpha * a ** 3 / x
-
-y = surface(x)
-
-print(y)
-
-
-exit()
-
 
 def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browser=True, show_3d=True):
     """

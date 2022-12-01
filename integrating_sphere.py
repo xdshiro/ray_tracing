@@ -13,6 +13,10 @@ import logging
 import time
 import matplotlib.pyplot as plt
 import cross_sections as cs  # mine
+import my_functions.functions_general as fg
+import my_functions.singularities as sing
+import my_functions.plotings as pl
+import my_functions.beams_and_pulses as bp
 
 # Some packages used by pvtrace are a little noisy
 logging.getLogger('trimesh').disabled = True
@@ -268,7 +272,12 @@ def main_create_scene_test():
 if __name__ == '__main__':
     # pv_integrating_sphere()
     scene = main_create_scene_test()
-    positions = cs.scene_render_and_positions(scene, rays_number=1000, show_3d=False)
+    positions = cs.scene_render_and_positions(scene, rays_number=10000, show_3d=False)
+    x_res, y_res, z_res = 100, 100, 100
+    grid_xyz = fg.create_mesh_XYZ(xMax=3, yMax=3, zMax=2, xRes=x_res, yRes=y_res, zRes=z_res, xMin=-3, yMin=-3, zMin=-2)
+    xAr_, yAr_, zAr_ = fg.arrays_from_mesh(grid_xyz)
+    scale_coeff_xyz = np.array([1 / (xAr_[1] - xAr_[0]), 1 / (yAr_[1] - yAr_[0]), 1 / (zAr_[1] - zAr_[0])])
+
     for plane_xyz in ['xy', 'zx', 'yz']:
 
         if plane_xyz == 'xy':
@@ -281,8 +290,28 @@ if __name__ == '__main__':
             plane = (0, 0, 0, 0)
 
         crossings = cs.crossings_plane_rays(positions, plane)
+        crossings_scaled = np.multiply(crossings, scale_coeff_xyz)
+        crossings_scaled_round = np.rint(crossings_scaled).astype(int)  ## centers
+        crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
+        crossings = crossings_scaled
+        field = np.zeros((x_res, y_res, z_res))
+        for dot in crossings_scaled_round:
+            dot += [x_res // 2, y_res // 2, z_res // 2]
+            if dot[0] >= 0 and dot[1] >= 0:
+                try:
+                    field[dot[0], dot[1], dot[2]] += 1
+                except IndexError:
+                    pass
+        # print(field)
+        # print(positions_scaled_round)
+        # exit()
         if plane_xyz == 'xy':
-            plt.scatter(crossings[:, 0], crossings[:, 1])
+            # plt.scatter(crossings[:, 0], crossings[:, 1])
+            # plt.scatter(crossings_scaled[:, 0], crossings_scaled[:, 1])
+            # print(field[:, :, z_res // 2])
+            plt.imshow(field[:, :, z_res // 2], cmap='jet', interpolation='bilinear')
+            plt.show()
+            exit()
         elif plane_xyz == 'zx':
             plt.scatter(crossings[:, 2], crossings[:, 0])
         elif plane_xyz == 'yz':
