@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pvtrace as pv
 
+
 world = pv.Node(
     name="world (air)",
     geometry=pv.Sphere(

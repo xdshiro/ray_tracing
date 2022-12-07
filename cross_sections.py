@@ -47,7 +47,6 @@ def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browse
     np.random.seed(random_seed)
     if show_3d:
         vis = pv.MeshcatRenderer(wireframe=True, open_browser=open_browser)
-        vis.render(scene)
     for rays in scene.emit(rays_number):
         steps = pv.photon_tracer.follow(scene, rays)
         path, decisions = zip(*steps)
@@ -57,6 +56,9 @@ def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browse
         positions.append(np.array(positions_ray))
         if show_3d:
             vis.add_ray_path(path)
+    if show_3d:
+        pass
+        vis.render(scene)
     return positions
 
 

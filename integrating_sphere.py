@@ -3,13 +3,18 @@ This module simulates the integration sphere using pvtrace package.
 Inside the sphere we can place different objects and structures.
 Absorption is included.
 """
+import logging
 
+logging.getLogger('matplotlib.font_manager').disabled = True
+logging.getLogger('trimesh').disabled = True
+logging.getLogger('shapely.geos').disabled = True
+logging.getLogger('matplotlib').setLevel(logging.CRITICAL)
 # from ipywidgets import interact
 # from pvtrace import *
 import pvtrace as pv
 import numpy as np
 import functools
-import logging
+
 import time
 import matplotlib.pyplot as plt
 import cross_sections as cs  # mine
@@ -19,8 +24,7 @@ import my_functions.plotings as pl
 import my_functions.beams_and_pulses as bp
 
 # Some packages used by pvtrace are a little noisy
-logging.getLogger('trimesh').disabled = True
-logging.getLogger('shapely.geos').disabled = True
+
 
 m1 = pv.Material(
     refractive_index=1.5,
@@ -62,11 +66,11 @@ def interact_ray(scene, vis):
 
 def structure_bubbles(parent):
     """
+    DOESN'T WORK
     3D rays of small spheres
     :param parent: world
     :return: None
     """
-
     a = 0.4
     x_ar = np.linspace(-5 * a, 5 * a, 11)
     y_ar = [-3 * a, -2 * a, -a, 0, a, 2 * a, 3 * a]
@@ -163,6 +167,127 @@ def pv_integrating_sphere(structure=structure_bubbles):
         time.sleep(1)
     renderer.render(scene)
     # renderer.vis.jupyter_cell()
+
+
+def spherical_to_cart(theta, phi, r=1):
+    """
+    transformation of the spherical coordinates to cartesiane coordinates
+    :return: x y z
+    """
+    x = r * np.sin(theta) * np.cos(phi)
+    y = r * np.sin(theta) * np.sin(phi)
+    z = r * np.cos(theta)
+    cart = np.column_stack((x, y, z))
+    if cart.size == 3:
+        return cart[0, :]
+    return cart
+
+
+def cylindrical_to_cart(r, phi, z=0):
+    """
+    transformation of the spherical coordinates to cartesiane coordinates
+    :return: x y z
+    """
+    x = r * np.cos(phi)
+    y = r * np.sin(phi)
+    z = z
+    cart = np.column_stack((x, y, z))
+    if cart.size == 3:
+        return cart[0, :]
+    return cart
+
+
+def cone(theta_max):
+    """ Samples directions within a cone of solid angle defined by `theta_max`.
+
+        Notes
+        -----
+        Derived as follows using sympy::
+
+            from sympy import *
+            theta, theta_max, p = symbols('theta theta_max p')
+            f = cos(theta) * sin(theta)
+            cdf = integrate(f, (theta, 0, theta))
+            pdf = cdf / cdf.subs({theta: theta_max})
+            inv_pdf = solve(Eq(pdf, p), theta)[-1]
+    """
+    if np.isclose(theta_max, 0.0) or theta_max > np.pi / 2:
+        raise ValueError("Expected 0 < theta_max <= pi/2")
+    p1, p2 = np.random.uniform(0, 1, 2)
+    theta = np.arcsin(np.sqrt(p1) * np.sin(theta_max))
+    phi = 2 * np.pi * p2
+    coords = spherical_to_cart(theta, phi)
+    return coords
+
+
+def collimated_beam(r):
+    """ Samples directions within a cone of solid angle defined by `theta_max`.
+
+        Notes
+        -----
+        Derived as follows using sympy::
+
+            from sympy import *
+            theta, theta_max, p = symbols('theta theta_max p')
+            f = cos(theta) * sin(theta)
+            cdf = integrate(f, (theta, 0, theta))
+            pdf = cdf / cdf.subs({theta: theta_max})
+            inv_pdf = solve(Eq(pdf, p), theta)[-1]
+    """
+    if np.isclose(r, 0.0):
+        raise ValueError("Expected 0 < r")
+    r_random = np.random.normal(0, r, 1)
+    p2 = np.random.uniform(0, 1, 1)
+    phi = 2 * np.pi * p2
+    coords = cylindrical_to_cart(r_random, phi, 0)
+
+    return coords
+
+
+def light_beam(parent):
+    r = 0.2
+    light = pv.Node(
+        name="Light (555nm)",
+        light=pv.Light(position=functools.partial(collimated_beam, r)),
+        parent=parent
+    )
+    # light.translate((coords))
+    # light.rotate(np.pi, [1, 0, 0])
+
+
+def structure_box(parent):
+    box = pv.Node(
+        name="box_1",
+        geometry=pv.Box(
+            (10.0, 10.0, 1),
+            material=pv.Material(
+                refractive_index=1.4,
+
+            ),
+        ),
+        parent=parent
+    )
+    # box.translate((0.0, 0.0, 0.0))
+
+
+def pv_scene_real(structure=structure_box, light=light_beam):
+    """
+
+    :param structure:
+    :param light:
+    :return:
+    """
+    world = pv.Node(
+        name="world (air)",
+        geometry=pv.Sphere(
+            radius=10.0,
+            material=pv.Material(refractive_index=1.0),
+        )
+    )
+    structure(parent=world)
+    light(parent=world)
+    scene = pv.Scene(world)
+    return scene
 
 
 def main_create_scene_test():
@@ -269,14 +394,41 @@ def main_create_scene_test():
     return scene
 
 
+def plot_field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-1, 1), y_max_min=(-1, 1)):
+    grid_xy = fg.create_mesh_XY(xMinMax=x_max_min, yMinMax=y_max_min, xRes=x_res, yRes=y_res)
+    xAr_, yAr_ = fg.arrays_from_mesh(grid_xy)
+    scale_coeff_x = 1 / (xAr_[1] - xAr_[0])
+    scale_coeff_y = 1 / (yAr_[1] - yAr_[0])
+    crossings_scaled_x = crossings_x * scale_coeff_x
+    crossings_scaled_y = crossings_y * scale_coeff_y
+    crossings_scaled_x_round = np.rint(crossings_scaled_x).astype(int)  # !!!!!!!!!!!!!!!!
+    crossings_scaled_y_round = np.rint(crossings_scaled_y).astype(int)
+    # crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
+    field = np.zeros((x_res, y_res))
+    for dot_scaled in zip(crossings_scaled_x_round, crossings_scaled_y_round):
+        dot = np.multiply(dot_scaled, (1 / scale_coeff_x, 1 / scale_coeff_y))
+        if (x_max_min[0] <= dot[0] <= x_max_min[1]) and (y_max_min[0] <= dot[1] <= y_max_min[1]):
+            field[dot_scaled[0] + x_res // 2, dot_scaled[1] + y_res // 2] += 1
+    return field
+    # try:
+    #     field[dot[0], dot[1], dot[2]] += 1
+    # except IndexError:
+    #     pass
+
+
 if __name__ == '__main__':
     # pv_integrating_sphere()
-    scene = main_create_scene_test()
-    positions = cs.scene_render_and_positions(scene, rays_number=10000, show_3d=False)
-    x_res, y_res, z_res = 100, 100, 100
-    grid_xyz = fg.create_mesh_XYZ(xMax=3, yMax=3, zMax=2, xRes=x_res, yRes=y_res, zRes=z_res, xMin=-3, yMin=-3, zMin=-2)
-    xAr_, yAr_, zAr_ = fg.arrays_from_mesh(grid_xyz)
-    scale_coeff_xyz = np.array([1 / (xAr_[1] - xAr_[0]), 1 / (yAr_[1] - yAr_[0]), 1 / (zAr_[1] - zAr_[0])])
+    # scene = main_create_scene_test()
+    scene = pv_scene_real()
+    positions = cs.scene_render_and_positions(scene, rays_number=1000, show_3d=True)
+    time.sleep(10)
+    exit()
+    x_res, y_res = 200, 200
+    xM = -2, 2
+    yM = -2, 2
+    # grid_xyz = fg.create_mesh_XYZ(xMax=3, yMax=3, zMax=2, xRes=x_res, yRes=y_res, zRes=z_res, xMin=-3, yMin=-3, zMin=-2)
+    # xAr_, yAr_, zAr_ = fg.arrays_from_mesh(grid_xyz)
+    # scale_coeff_xyz = np.array([1 / (xAr_[1] - xAr_[0]), 1 / (yAr_[1] - yAr_[0]), 1 / (zAr_[1] - zAr_[0])])
 
     for plane_xyz in ['xy', 'zx', 'yz']:
 
@@ -290,31 +442,44 @@ if __name__ == '__main__':
             plane = (0, 0, 0, 0)
 
         crossings = cs.crossings_plane_rays(positions, plane)
-        crossings_scaled = np.multiply(crossings, scale_coeff_xyz)
-        crossings_scaled_round = np.rint(crossings_scaled).astype(int)  ## centers
-        crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
-        crossings = crossings_scaled
-        field = np.zeros((x_res, y_res, z_res))
-        for dot in crossings_scaled_round:
-            dot += [x_res // 2, y_res // 2, z_res // 2]
-            if dot[0] >= 0 and dot[1] >= 0:
-                try:
-                    field[dot[0], dot[1], dot[2]] += 1
-                except IndexError:
-                    pass
+        # crossings_scaled = np.multiply(crossings, scale_coeff_xyz)
+        # crossings_scaled_round = np.rint(crossings_scaled).astype(int)  ## centers
+        # crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
+        # crossings = crossings_scaled
+        # field = np.zeros((x_res, y_res, z_res))
+        # for dot in crossings_scaled_round:
+        #     dot += [x_res // 2, y_res // 2, z_res // 2]
+        #     if dot[0] >= 0 and dot[1] >= 0:
+        #         try:
+        #             field[dot[0], dot[1], dot[2]] += 1
+        #         except IndexError:
+        #             pass
         # print(field)
         # print(positions_scaled_round)
         # exit()
         if plane_xyz == 'xy':
-            # plt.scatter(crossings[:, 0], crossings[:, 1])
-            # plt.scatter(crossings_scaled[:, 0], crossings_scaled[:, 1])
-            # print(field[:, :, z_res // 2])
-            plt.imshow(field[:, :, z_res // 2], cmap='jet', interpolation='bilinear')
+            field = plot_field_from_crossings_2D(
+                crossings[:, 0], crossings[:, 1],
+                x_res=x_res, y_res=y_res, x_max_min=xM, y_max_min=yM
+            )
+            plt.imshow(field[:, :].T, cmap='gray', interpolation='bilinear', extent=[xM[0], xM[1], yM[0], yM[1]])
+            plt.tight_layout()
             plt.show()
             exit()
+            plt.scatter(crossings[:, 0], crossings[:, 1])
         elif plane_xyz == 'zx':
+            field = plot_field_from_crossings_2D(crossings[:, 2], crossings[:, 0],
+                                                 x_res=75, y_res=50, x_max_min=(-3, 3), y_max_min=(-2, 2))
+            plt.imshow(field[:, :].T, cmap='gray', interpolation='bilinear')
+            plt.tight_layout()
+            plt.show()
             plt.scatter(crossings[:, 2], crossings[:, 0])
         elif plane_xyz == 'yz':
+            field = plot_field_from_crossings_2D(crossings[:, 1], crossings[:, 2],
+                                                 x_res=75, y_res=50, x_max_min=(-3, 3), y_max_min=(-2, 2))
+            plt.imshow(field[:, ::-1].T, cmap='gray', interpolation='bilinear')
+            plt.tight_layout()
+            plt.show()
             plt.scatter(crossings[:, 1], crossings[:, 2])
 
         cs.plot_scene_2D(scene, plane)
