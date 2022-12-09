@@ -122,9 +122,10 @@ def crossing_plane_line(dot1, dot2, plane=(0, 0, 1, 0), check_segment=True):
         dot_cross = np.linalg.solve(matrix, vector)
         if not np.allclose(np.dot(matrix, dot_cross), vector):
             print(f'WRONG CROSSINGS')
+        dot_ans = np.array([dot_cross[0, 0], dot_cross[1, 0], dot_cross[2, 0]])
     except np.linalg.LinAlgError:
         dot_cross = None
-    dot_ans = np.array([dot_cross[0, 0], dot_cross[1, 0], dot_cross[2, 0]])
+
     if check_segment:
         check = dot_on_segment(dot_cross, dot1, dot2)
         if check:

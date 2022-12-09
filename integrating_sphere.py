@@ -245,29 +245,62 @@ def collimated_beam(r):
 
 
 def light_beam(parent):
-    r = 0.2
+    r = 0.3
     light = pv.Node(
         name="Light (555nm)",
         light=pv.Light(position=functools.partial(collimated_beam, r)),
         parent=parent
     )
-    # light.translate((coords))
-    # light.rotate(np.pi, [1, 0, 0])
+    light.translate([0, 0, 8])
+    light.rotate(np.pi, [1, 0, 0])
 
 
 def structure_box(parent):
+    # box = pv.Node(
+    #     name="box_1",
+    #     geometry=pv.Box(
+    #         (2.0, 1.0, 2),
+    #         material=pv.Material(
+    #             refractive_index=1.08,
+    #             components=[
+    #                 pv.Absorber(coefficient=0.098),
+    #                 pv.Scatterer(coefficient=5.409)
+    #             ]
+    #
+    #         ),
+    #     ),
+    #     parent=parent
+    # )
     box = pv.Node(
         name="box_1",
         geometry=pv.Box(
-            (10.0, 10.0, 1),
+            (2.0, 1.0, 2),
             material=pv.Material(
-                refractive_index=1.4,
+                refractive_index=1.08,
+                components=[
+                    pv.Absorber(coefficient=0.1703),
+                    pv.Scatterer(coefficient=2.181)
+                ]
 
             ),
         ),
         parent=parent
     )
-    # box.translate((0.0, 0.0, 0.0))
+    # box = pv.Node(
+    #     name="box_1",
+    #     geometry=pv.Box(
+    #         (2.0, 1.0, 2),
+    #         material=pv.Material(
+    #             refractive_index=1.08,
+    #             components=[
+    #                 pv.Absorber(coefficient=0.1666),
+    #                 pv.Scatterer(coefficient=0.9063)
+    #             ]
+    #
+    #         ),
+    #     ),
+    #     parent=parent
+    # )
 
 
 def pv_scene_real(structure=structure_box, light=light_beam):
@@ -394,7 +427,7 @@ def main_create_scene_test():
     return scene
 
 
-def plot_field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-1, 1), y_max_min=(-1, 1)):
+def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-1, 1), y_max_min=(-1, 1)):
     grid_xy = fg.create_mesh_XY(xMinMax=x_max_min, yMinMax=y_max_min, xRes=x_res, yRes=y_res)
     xAr_, yAr_ = fg.arrays_from_mesh(grid_xy)
     scale_coeff_x = 1 / (xAr_[1] - xAr_[0])
@@ -420,88 +453,117 @@ if __name__ == '__main__':
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
     scene = pv_scene_real()
-    positions = cs.scene_render_and_positions(scene, rays_number=1000, show_3d=True)
-    time.sleep(10)
-    exit()
-    x_res, y_res = 200, 200
+    # positions = cs.scene_render_and_positions(scene, rays_number=25000, show_3d=False)
+    positions = cs.scene_render_and_positions(scene, rays_number=45000, show_3d=False)
+    # time.sleep(10)
+    # exit()
+    x_res, y_res = 201, 201
     xM = -2, 2
     yM = -2, 2
     # grid_xyz = fg.create_mesh_XYZ(xMax=3, yMax=3, zMax=2, xRes=x_res, yRes=y_res, zRes=z_res, xMin=-3, yMin=-3, zMin=-2)
     # xAr_, yAr_, zAr_ = fg.arrays_from_mesh(grid_xyz)
     # scale_coeff_xyz = np.array([1 / (xAr_[1] - xAr_[0]), 1 / (yAr_[1] - yAr_[0]), 1 / (zAr_[1] - zAr_[0])])
-
-    for plane_xyz in ['xy', 'zx', 'yz']:
-
-        if plane_xyz == 'xy':
-            plane = (0, 0, 1, 0)
-        elif plane_xyz == 'zx':
-            plane = (0, 1, 0, 0)
-        elif plane_xyz == 'yz':
-            plane = (1, 0, 0, 0)
-        else:
-            plane = (0, 0, 0, 0)
-
-        crossings = cs.crossings_plane_rays(positions, plane)
-        # crossings_scaled = np.multiply(crossings, scale_coeff_xyz)
-        # crossings_scaled_round = np.rint(crossings_scaled).astype(int)  ## centers
-        # crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
-        # crossings = crossings_scaled
-        # field = np.zeros((x_res, y_res, z_res))
-        # for dot in crossings_scaled_round:
-        #     dot += [x_res // 2, y_res // 2, z_res // 2]
-        #     if dot[0] >= 0 and dot[1] >= 0:
-        #         try:
-        #             field[dot[0], dot[1], dot[2]] += 1
-        #         except IndexError:
-        #             pass
-        # print(field)
-        # print(positions_scaled_round)
-        # exit()
-        if plane_xyz == 'xy':
-            field = plot_field_from_crossings_2D(
+    flux_xy = False
+    cross_sections = True
+    if flux_xy:
+        full_field = []
+        for z in np.linspace(-2, +2, 50):
+            plane = (0, 0, 1, z)
+            crossings = cs.crossings_plane_rays(positions, plane)
+            field = field_from_crossings_2D(
                 crossings[:, 0], crossings[:, 1],
                 x_res=x_res, y_res=y_res, x_max_min=xM, y_max_min=yM
             )
-            plt.imshow(field[:, :].T, cmap='gray', interpolation='bilinear', extent=[xM[0], xM[1], yM[0], yM[1]])
-            plt.tight_layout()
-            plt.show()
-            exit()
-            plt.scatter(crossings[:, 0], crossings[:, 1])
-        elif plane_xyz == 'zx':
-            field = plot_field_from_crossings_2D(crossings[:, 2], crossings[:, 0],
-                                                 x_res=75, y_res=50, x_max_min=(-3, 3), y_max_min=(-2, 2))
-            plt.imshow(field[:, :].T, cmap='gray', interpolation='bilinear')
-            plt.tight_layout()
-            plt.show()
-            plt.scatter(crossings[:, 2], crossings[:, 0])
-        elif plane_xyz == 'yz':
-            field = plot_field_from_crossings_2D(crossings[:, 1], crossings[:, 2],
-                                                 x_res=75, y_res=50, x_max_min=(-3, 3), y_max_min=(-2, 2))
-            plt.imshow(field[:, ::-1].T, cmap='gray', interpolation='bilinear')
-            plt.tight_layout()
-            plt.show()
-            plt.scatter(crossings[:, 1], crossings[:, 2])
-
-        cs.plot_scene_2D(scene, plane)
-
-        ax = plt.subplot()
-        ax.set_aspect(1)
-
-        if plane_xyz == 'xy':
-            plt.title(f'XY, Z={-plane[3]}')
-            plt.xlabel('x')
-            plt.ylabel('y')
-        elif plane_xyz == 'zx':
-            plt.title(f'ZX, y={-plane[3]}')
-            plt.xlabel('z')
-            plt.ylabel('x')
-        elif plane_xyz == 'yz':
-            plt.title(f'YZ, X={-plane[3]}')
-            plt.xlabel('y')
-            plt.ylabel('z')
-        ax = plt.subplot()
-        ax.set_aspect(1)
-        plt.xlim(-3, 3)
-        plt.ylim(-2, 2)
+            full_field.append(field)
+        full_field = np.array(full_field)
+        print(np.shape(full_field))
+        plt.imshow(full_field[:, :, y_res//2], cmap='nipy_spectral', interpolation='bilinear',
+                   extent=[xM[0], xM[1], yM[0], yM[1]])
         plt.tight_layout()
         plt.show()
+    if cross_sections:
+        scatter = False
+        intensity = True
+        for plane_xyz in ['xy', 'zx', 'yz']:
+
+            if plane_xyz == 'xy':
+                plane = (0, 0, 1, 0)
+            elif plane_xyz == 'zx':
+                plane = (0, 1, 0, 0.5)
+            elif plane_xyz == 'yz':
+                plane = (1, 0, 0, 0.5)
+            else:
+                plane = (0, 0, 0, 0)
+
+            crossings = cs.crossings_plane_rays(positions, plane)
+            # crossings_scaled = np.multiply(crossings, scale_coeff_xyz)
+            # crossings_scaled_round = np.rint(crossings_scaled).astype(int)  ## centers
+            # crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
+            # crossings = crossings_scaled
+            # field = np.zeros((x_res, y_res, z_res))
+            # for dot in crossings_scaled_round:
+            #     dot += [x_res // 2, y_res // 2, z_res // 2]
+            #     if dot[0] >= 0 and dot[1] >= 0:
+            #         try:
+            #             field[dot[0], dot[1], dot[2]] += 1
+            #         except IndexError:
+            #             pass
+            # print(field)
+            # print(positions_scaled_round)
+            # exit()
+            if plane_xyz == 'xy':
+                if intensity:
+                    field = field_from_crossings_2D(
+                        crossings[:, 0], crossings[:, 1],
+                        x_res=x_res, y_res=y_res, x_max_min=xM, y_max_min=yM
+                    )
+                    plt.imshow(field[:, :].T, cmap='nipy_spectral', interpolation='bilinear',
+                               extent=[xM[0], xM[1], yM[0], yM[1]])
+                    plt.tight_layout()
+                    plt.show()
+                if scatter:
+                    plt.scatter(crossings[:, 0], crossings[:, 1])
+            elif plane_xyz == 'zx':
+                if intensity:
+                    field = field_from_crossings_2D(crossings[:, 2], crossings[:, 0],
+                                                    x_res=x_res, y_res=y_res, x_max_min=xM, y_max_min=yM)
+                    plt.imshow(field[:, :].T, cmap='nipy_spectral', interpolation='bilinear',
+                               extent=[xM[0], xM[1], yM[0], yM[1]])
+                    plt.tight_layout()
+                    plt.show()
+                if scatter:
+                    plt.scatter(crossings[:, 2], crossings[:, 0])
+            elif plane_xyz == 'yz':
+                if intensity:
+                    field = field_from_crossings_2D(crossings[:, 1], crossings[:, 2],
+                                                    x_res=x_res, y_res=y_res, x_max_min=xM, y_max_min=yM)
+                    plt.imshow(field[:, ::-1].T, cmap='nipy_spectral', interpolation='bilinear',
+                               extent=[xM[0], xM[1], yM[0], yM[1]])
+                    plt.tight_layout()
+                    plt.show()
+                if scatter:
+                    plt.scatter(crossings[:, 1], crossings[:, 2])
+
+            cs.plot_scene_2D(scene, plane)
+            if scatter:
+                ax = plt.subplot()
+                ax.set_aspect(1)
+
+                if plane_xyz == 'xy':
+                    plt.title(f'XY, Z={-plane[3]}')
+                    plt.xlabel('x')
+                    plt.ylabel('y')
+                elif plane_xyz == 'zx':
+                    plt.title(f'ZX, y={-plane[3]}')
+                    plt.xlabel('z')
+                    plt.ylabel('x')
+                elif plane_xyz == 'yz':
+                    plt.title(f'YZ, X={-plane[3]}')
+                    plt.xlabel('y')
+                    plt.ylabel('z')
+                ax = plt.subplot()
+                ax.set_aspect(1)
+                plt.xlim(-3, 3)
+                plt.ylim(-2, 2)
+                plt.tight_layout()
+                plt.show()
