@@ -245,11 +245,13 @@ def collimated_beam(r):
 
 
 def light_beam(parent):
-    r = 0.3
+    r = 0.05
     light = pv.Node(
         name="Light (555nm)",
-        light=pv.Light(position=functools.partial(collimated_beam, r)),
-        parent=parent
+        light=pv.Light(position=functools.partial(collimated_beam, r),
+                       wavelength=lambda: 555
+                       ),
+        parent=parent,
     )
     light.translate([0, 0, 8])
     light.rotate(np.pi, [1, 0, 0])
@@ -271,21 +273,21 @@ def structure_box(parent):
     #     ),
     #     parent=parent
     # )
-    box = pv.Node(
-        name="box_1",
-        geometry=pv.Box(
-            (2.0, 1.0, 2),
-            material=pv.Material(
-                refractive_index=1.08,
-                components=[
-                    pv.Absorber(coefficient=0.1703),
-                    pv.Scatterer(coefficient=2.181)
-                ]
-
-            ),
-        ),
-        parent=parent
-    )
+    # box = pv.Node(
+    #     name="box_1",
+    #     geometry=pv.Box(
+    #         (2.0, 1.0, 2),
+    #         material=pv.Material(
+    #             refractive_index=1.08,
+    #             components=[
+    #                 pv.Absorber(coefficient=0.1703),
+    #                 pv.Scatterer(coefficient=2.181)
+    #             ]
+    #
+    #         ),
+    #     ),
+    #     parent=parent
+    # )
     # box = pv.Node(
     #     name="box_1",
     #     geometry=pv.Box(
@@ -301,6 +303,164 @@ def structure_box(parent):
     #     ),
     #     parent=parent
     # )
+
+    from pvtrace import SurfaceDelegate
+    class PartialTopSurfaceMirror(pv.FresnelSurfaceDelegate):
+        """ A section of the top surface is covered with a perfect mirrrors.
+
+            All other surface obey the Fresnel equations.
+        """
+        # print(super(PartialTopSurfaceMirror, self).reflected_direction(surface, ray, geometry, container,
+        #                                                                adjacent))
+
+        def reflected_direction(self, surface, ray, geometry, container, adjacent):
+            TOP_SURFACE = (0, 0, 1)
+            BOT_SURFACE = (0, 0, -1)
+            LEFT_SURFACE = (-1, 0, 0)
+            RIGHT_SURFACE = (1, 0, 0)
+            FRONT_SURFACE = (0, -1, 0)
+            BACK_SURFACE = (0, 1, 0)
+            theta = np.pi/3
+            phi = np.pi/5
+            r=1
+            x0, y0, z0 = ray.position[0], ray.position[1], ray.position[2]
+            normal = geometry.normal(ray.position)
+            x = r * np.sin(theta) * np.cos(phi)
+            y = r * np.sin(theta) * np.sin(phi)
+            z = r * np.cos(theta)
+            if np.allclose(normal, TOP_SURFACE):
+                return 0, 0, -1
+            elif np.allclose(normal, BOT_SURFACE):
+                return x, y, z
+            elif np.allclose(normal, LEFT_SURFACE):
+                return 1, 0, 0
+            elif np.allclose(normal, RIGHT_SURFACE):
+                return -1, 0, 0
+            elif np.allclose(normal, FRONT_SURFACE):
+                return 0, 1, 0
+            elif np.allclose(normal, BACK_SURFACE):
+                return 0, -1, 0
+            return normal
+            # return x, y, z
+
+
+        def reflectivity(self, surface, ray, geometry, container, adjacent):
+            """ Return the reflectivity of the part of the surface hit by the ray.
+
+                Parameters
+                ----------
+                surface: Surface
+                    The surface object belonging to the material.
+                ray: Ray
+                    The ray hitting the surface in the local coordinate system of the `geometry` object.
+                geometry: Geometry
+                    The object being hit (e.g. Sphere, Box, Cylinder, Mesh etc.)
+                container: Node
+                    The node containing the ray.
+                adjacent: Node
+                    The node that will contain the ray if the ray is transmitted.
+            """
+            # Get the surface normal to determine which surface has been hit.
+            normal = geometry.normal(ray.position)
+            # print(self, surface, ray, geometry, container, adjacent)
+            # exit()
+            # Normal are outward facing
+
+            x, y, z = ray.position[0], ray.position[1], ray.position[2]
+
+            if np.isclose(z, 1) and np.abs(x) < 0.3 and np.abs(y) < 0.3:
+                return super(PartialTopSurfaceMirror, self).reflectivity(surface, ray, geometry, container,
+                                                                         adjacent)
+            else:
+                # print(x, y, z)
+                return 0.9
+            # If a ray hits the top surface where x > 0 and y > 0 reflection
+            # set the reflectivity to 1.
+            if np.allclose(normal, BOT_SURFACE):
+                x, y = ray.position[0], ray.position[1]
+                if x > -0.5 and y > -0.5:
+                    return 1
+            print(super(PartialTopSurfaceMirror, self).reflected_direction(surface, ray, geometry, container,
+                                                                     adjacent))
+            # direction = self.phase_function()
+            # ray = replace(ray, direction=direction, source=self.name)
+            # return ray
+            # direction = self.delegate.reflected_direction(
+            #     self, ray, geometry, container, adjacent
+            # )
+            # Otherwise return the Frensel reflection probability.
+            return super(PartialTopSurfaceMirror, self).reflectivity(surface, ray, geometry, container,
+                                                                     adjacent)  # opt-out of handling custom reflection
+
+    # box2 = pv.Node(
+    #     name="box_2",
+    #     geometry=pv.Box(
+    #         (2.0 * 1.001, 1.0 * 1.001, 2 * 1.001),
+    #         material=pv.Material(
+    #             refractive_index=1.08,
+    #             components=[
+    #                 pv.Absorber(coefficient=1.),
+    #                 pv.Scatterer(coefficient=5000.001)
+    #             ],
+    #             surface=pv.Surface(delegate=PartialTopSurfaceMirror())
+
+            # ),
+        # ),
+        # parent=parent
+    # )
+    box = pv.Node(
+        name="box_1",
+        geometry=pv.Box(
+            (2.0, 1.0, 2),
+            # radius=3,
+            material=pv.Material(
+                refractive_index=1.05,
+                # surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
+                components=[
+                    pv.Absorber(coefficient=0.1),
+                    pv.Scatterer(coefficient=0.00001)
+                ],
+
+            ),
+        ),
+        parent=parent
+    )
+    # box3 = pv.Node(
+    #     name="box_3",
+    #     geometry=pv.Box(
+    #         (0.5, 0.5, 0.02),
+    #         material=pv.Material(
+    #             refractive_index=1.08,
+    #             components=[
+    #                 pv.Absorber(coefficient=0.001),
+    #                 pv.Scatterer(coefficient=0.001)
+    #             ],
+    # surface=pv.Surface(delegate=PartialTopSurfaceMirror())
+    #
+    # ),
+    # ),
+    # parent=parent
+    # )
+    # box3.translate((0, 0, 1))
+
+    #
+    # box3 = pv.Node(
+    #     name="box_3",
+    #     geometry=pv.Box(
+    #         (0.5, 0.5, 0.02),
+    #         material=pv.Material(
+    #             refractive_index=1.08,
+    #             components=[
+    #                 pv.Absorber(coefficient=0.001),
+    #                 pv.Scatterer(coefficient=0.001)
+    #             ],
+                # surface=pv.Surface(delegate=PartialTopSurfaceMirror())
+            #
+            # ),
+        # ),
+        # parent=parent
+    # )
+    # box3.translate((0, 0, 1))
 
 
 def pv_scene_real(structure=structure_box, light=light_beam):
@@ -448,13 +608,95 @@ def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-
     # except IndexError:
     #     pass
 
+def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-1, 1), y_max_min=(-1, 1)):
+    grid_xy = fg.create_mesh_XY(xMinMax=x_max_min, yMinMax=y_max_min, xRes=x_res, yRes=y_res)
+    xAr_, yAr_ = fg.arrays_from_mesh(grid_xy)
+    scale_coeff_x = 1 / (xAr_[1] - xAr_[0])
+    scale_coeff_y = 1 / (yAr_[1] - yAr_[0])
+    crossings_scaled_x = crossings_x * scale_coeff_x
+    crossings_scaled_y = crossings_y * scale_coeff_y
+    crossings_scaled_x_round = np.rint(crossings_scaled_x).astype(int)  # !!!!!!!!!!!!!!!!
+    crossings_scaled_y_round = np.rint(crossings_scaled_y).astype(int)
+    # crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
+    field = np.zeros((x_res, y_res))
+    for dot_scaled in zip(crossings_scaled_x_round, crossings_scaled_y_round):
+        dot = np.multiply(dot_scaled, (1 / scale_coeff_x, 1 / scale_coeff_y))
+        if (x_max_min[0] <= dot[0] <= x_max_min[1]) and (y_max_min[0] <= dot[1] <= y_max_min[1]):
+            field[dot_scaled[0] + x_res // 2, dot_scaled[1] + y_res // 2] += 1
+    return field
+
+
+def lines_dots(positions):
+    """
+    Line : (x-x1)/(x2-x1) = (y-y1)/(y2-y1) = (z-z1)/(z2-z1)
+    Parametric :
+        x = x1 + (x2 - x1) * a
+        y = y1 + (y2 - y1) * a
+        z = z1 + (z2 - z1) * a
+    :param positions:
+    :return:
+    """
+    for dots in positions:
+        dot1 = dots[0]
+        for dot2 in dots[1:]:
+            pass
+            dot1 = dot2
+    exit()
+    """
+    Function finds the crossing of the line (in between dot1 and dot2) and the plane.
+    Line : (x-x1)/(x2-x1) = (y-y1)/(y2-y1) = (z-z1)/(z2-z1)
+
+    Plane: Ax + By + Cz + D = 0
+    |x-x1  y-y1  z-z1 |
+    |x2-x1 y2-y1 z2-z1| = 0
+    |x3-x1 y3-y1 z3-z1|
+    Example:
+    (-5, -5, 0), (-5, 5, 0), (5, 5, 0)
+    z = 0
+    (https://ru.onlinemschool.com/math/assistance/cartesian_coordinate/plane/)
+
+    Crossing: https://matworld.ru/analytic-geometry/tochka-peresechenija-prjamoj-i-ploskosti.php
+    (look at equations, ignore the text)
+    :param dot1: (x1, y1, z1)
+    :param dot2: (x2, y2, z2)
+    :param plane: (A, B, C, D) where Ax + By + Cz + D = 0
+    :param check_segment: if True, checking if the don is on the segment in between dot1 and dot2
+    :return: dot: (x, y ,z) or None if there is no crossing
+    """
+    x1, y1, z1 = dot1
+    x2, y2, z2 = dot2
+    m1 = x2 - x1
+    p1 = y2 - y1
+    l1 = z2 - z1
+    # z = D plane
+    A, B, C, D = plane
+    matrix = [[p1, -m1, 0], [0, l1, -p1], [A, B, C]]
+    vector = [[p1 * x1 - m1 * y1], [l1 * y1 - p1 * z1], [-D]]
+    try:
+        dot_cross = np.linalg.solve(matrix, vector)
+        if not np.allclose(np.dot(matrix, dot_cross), vector):
+            print(f'WRONG CROSSINGS')
+        dot_ans = np.array([dot_cross[0, 0], dot_cross[1, 0], dot_cross[2, 0]])
+    except np.linalg.LinAlgError:
+        dot_cross = None
+
+    if check_segment:
+        check = dot_on_segment(dot_cross, dot1, dot2)
+        if check:
+            return dot_ans
+        else:
+            return None
+
+    return dot_ans
 
 if __name__ == '__main__':
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
     scene = pv_scene_real()
-    # positions = cs.scene_render_and_positions(scene, rays_number=25000, show_3d=False)
-    positions = cs.scene_render_and_positions(scene, rays_number=45000, show_3d=False)
+    positions = cs.scene_render_and_positions(scene, rays_number=10, show_3d=False)
+    lines_dots(positions)
+    exit()
+    # positions = cs.scene_render_and_positions(scene, rays_number=50, show_3d=True)
     # time.sleep(10)
     # exit()
     x_res, y_res = 201, 201
@@ -476,7 +718,6 @@ if __name__ == '__main__':
             )
             full_field.append(field)
         full_field = np.array(full_field)
-        print(np.shape(full_field))
         plt.imshow(full_field[:, :, y_res//2], cmap='nipy_spectral', interpolation='bilinear',
                    extent=[xM[0], xM[1], yM[0], yM[1]])
         plt.tight_layout()
@@ -489,9 +730,9 @@ if __name__ == '__main__':
             if plane_xyz == 'xy':
                 plane = (0, 0, 1, 0)
             elif plane_xyz == 'zx':
-                plane = (0, 1, 0, 0.5)
+                plane = (0, 1, 0, 0)
             elif plane_xyz == 'yz':
-                plane = (1, 0, 0, 0.5)
+                plane = (1, 0, 0, 0)
             else:
                 plane = (0, 0, 0, 0)
 
@@ -567,3 +808,4 @@ if __name__ == '__main__':
                 plt.ylim(-2, 2)
                 plt.tight_layout()
                 plt.show()
+
