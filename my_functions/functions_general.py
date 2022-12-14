@@ -384,6 +384,20 @@ def cut_filter(E, radiusPix=1, circle=True, phaseOnly=False):
     return ans
 
 
+def spherical_coordinates(x, y, z):
+    """
+    Function returns spherical coordinates of the dot in Cartesial coordinates
+    :return: r, phi, theta
+    """
+    r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+    theta = np.arccos(z / r)
+    if x == 0 and y == 0:
+        phi = 0
+    else:
+        phi = np.sign(y) * np.arccos(x / np.sqrt(x ** 2 + y ** 2))
+    return r, phi, theta
+
+
 if __name__ == '__main__':
     import my_functions.beams_and_pulses as bp
     import my_functions.plotings as pl

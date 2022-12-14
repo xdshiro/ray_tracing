@@ -310,39 +310,138 @@ def structure_box(parent):
 
             All other surface obey the Fresnel equations.
         """
+
         # print(super(PartialTopSurfaceMirror, self).reflected_direction(surface, ray, geometry, container,
         #                                                                adjacent))
-
+        # Xn0 = np.array((0, 0, -1))
+        # # Xp0 = perpendicular_vector_3D(Xn0)
+        # # Xc0 = np.cross(Xp0, Xn0)
+        # # print(Xn0, Xp0, Xc0)
+        # # exit()
+        # Xp0 = np.array((1, 0, 0))
+        # Xc0 = np.array((0, 1, 0))
+        # Xn = geometry.normal(ray.position)
+        # Xp = perpendicular_vector_3D(Xn)
+        # Xc = np.cross(Xp, Xn)
+        # dir0, up0, cross0 = Xp0, Xn0, Xc0
+        # dir, up, cross = Xp, Xn, Xc
+        # transform = [
+        #     [np.dot(Xn, Xn0), np.dot(Xp, Xn0), np.dot(Xc, Xn0)],
+        #     [np.dot(Xn, Xp0), np.dot(Xp, Xp0), np.dot(Xc, Xp0)],
+        #     [np.dot(Xn, Xc0), np.dot(Xp, Xc0), np.dot(Xc, Xc0)]
+        # ]
+        # R1 = np.array([Xp0, Xn0, Xc0])
+        # R2 = np.array([Xp, Xn, Xc])
+        # transform2 = np.matmul(R1, R2.T)
         def reflected_direction(self, surface, ray, geometry, container, adjacent):
-            TOP_SURFACE = (0, 0, 1)
-            BOT_SURFACE = (0, 0, -1)
-            LEFT_SURFACE = (-1, 0, 0)
-            RIGHT_SURFACE = (1, 0, 0)
-            FRONT_SURFACE = (0, -1, 0)
-            BACK_SURFACE = (0, 1, 0)
-            theta = np.pi/3
-            phi = np.pi/5
-            r=1
-            x0, y0, z0 = ray.position[0], ray.position[1], ray.position[2]
-            normal = geometry.normal(ray.position)
-            x = r * np.sin(theta) * np.cos(phi)
-            y = r * np.sin(theta) * np.sin(phi)
-            z = r * np.cos(theta)
-            if np.allclose(normal, TOP_SURFACE):
-                return 0, 0, -1
-            elif np.allclose(normal, BOT_SURFACE):
-                return x, y, z
-            elif np.allclose(normal, LEFT_SURFACE):
-                return 1, 0, 0
-            elif np.allclose(normal, RIGHT_SURFACE):
-                return -1, 0, 0
-            elif np.allclose(normal, FRONT_SURFACE):
-                return 0, 1, 0
-            elif np.allclose(normal, BACK_SURFACE):
-                return 0, -1, 0
-            return normal
-            # return x, y, z
+            # basis surface (bottom, directed upwards)
+            xn0, yn0, zy0 = 0, 0, -1
 
+            def scattered_angles():
+                p1, p2 = np.random.uniform(0, 1, 2)
+                # theta = np.arcsin(np.sqrt(p1) * np.sin(theta_max))
+                phi = 2 * np.pi * p2
+                # phi = np.pi / 5
+                theta = np.pi / 5
+                return phi, theta
+
+            def perpendicular_vector_3D(X):
+                """
+                add the real case, not the cube!!!!!!!!!!!!!!!
+                :param x:
+                :param y:
+                :param z:
+                :return:
+                """
+                x, y, z = X
+                if x == 0 and y == 0:
+                    return 1, 0, 0
+                elif x == 0 and z == 0:
+                    return 0, 0, 1
+                elif y == 0 and z == 0:
+                    return 0, 1, 0
+
+            # current surface normal
+            xn, yn, zn = geometry.normal(ray.position)
+            # xp, yp, zp = perpendicular_vector_3D(xn, yn, zn)
+            # xc, yc, zc = np.cross([xn, yn, zn], [xp, yp, zp])
+            u = np.array((0, 0, -1))
+            v = perpendicular_vector_3D(u)
+            uv = np.cross(u, v)
+            # print(Xn0, Xp0, Xc0)
+            # exit()
+            x = geometry.normal(ray.position)
+            y = perpendicular_vector_3D(x)
+            # xy = np.array((x[0]*y[2]-x[2]*y[0],x[2]*y[0]-x[0]*y[2],x[0]*y[1]-x[1]*y[0]))
+            xy = np.cross(x, y)
+            # print(u, v, uv)
+            # print(x, y, xy)
+            transform3 = np.array([
+                [np.dot(x, u), np.dot(x, v), np.dot(x, uv)],
+                [np.dot(y, u), np.dot(y, v), np.dot(y, uv)],
+                [np.dot(xy, u), np.dot(xy, v), np.dot(xy, uv)]
+            ])
+            R1 = np.array([u, v, uv])
+            R2 = np.array([x, y, xy])
+            transform3 = np.matmul(R1.T, R2)
+            # print(transform3)
+            # exit()
+            phi_new, theta_new = scattered_angles()
+            # print(np.matmul(x, transform3), u)
+            print(np.matmul(u, transform3), x)
+            # print(np.matmul(u, transform3.T), x)
+            # print(np.matmul(x, transform3.T), u)
+            # print(np.matmul(x.T, transform3), u)
+            # print(np.matmul(transform3, x), u)
+            # print(np.matmul(transform3, u), x)
+            # print(np.matmul(transform3.T, x), u)
+            # print(np.matmul(transform3.T, u), x)
+            # print(np.matmul(transform3, x.T), u)
+            print('a')
+            # print(np.matmul(v, transform3), y)
+            # print(np.matmul(uv, transform3), xy)
+            x = np.sin(theta_new) * np.cos(phi_new)
+            y = np.sin(theta_new) * np.sin(phi_new)
+            z = np.cos(theta_new)
+            # z = np.sin(theta_new) * np.cos(phi_new)
+            # y = np.sin(theta_new) * np.sin(phi_new)
+            # x = np.cos(theta_new)
+
+            Xnew0 = np.array((x, y, z))
+
+            Xnew = tuple(np.matmul(Xnew0, transform3))
+            return Xnew
+
+            _, phi0, theta0 = fg.spherical_coordinates(xn0, yn0, zy0)
+            _, phin, thetan = fg.spherical_coordinates(xn, yn, zn)
+
+            phi_delta, theta_delta = phin - phi0, thetan - theta0
+
+            phi, theta = scattered_angles()
+            phi_new, theta_new = phi + phi_delta, theta + theta_delta
+
+            x = np.sin(theta_new) * np.cos(phi_new)
+            y = np.sin(theta_new) * np.sin(phi_new)
+            z = np.cos(theta_new)
+            print(x, y, z)
+            # coords = tuple(spherical_to_cart(theta_new, phi_new))
+
+            return x, y, z
+            # normal = geometry.normal(ray.position)
+            # if np.allclose(normal, TOP_SURFACE):
+            #     return 0, 0, -1
+            # elif np.allclose(normal, BOT_SURFACE):
+            #     return x, y, z
+            # elif np.allclose(normal, LEFT_SURFACE):
+            #     return 1, 0, 0
+            # elif np.allclose(normal, RIGHT_SURFACE):
+            #     return -1, 0, 0
+            # elif np.allclose(normal, FRONT_SURFACE):
+            #     return 0, 1, 0
+            # elif np.allclose(normal, BACK_SURFACE):
+            #     return 0, -1, 0
+            # return normal
+            # return x, y, z
 
         def reflectivity(self, surface, ray, geometry, container, adjacent):
             """ Return the reflectivity of the part of the surface hit by the ray.
@@ -361,7 +460,7 @@ def structure_box(parent):
                     The node that will contain the ray if the ray is transmitted.
             """
             # Get the surface normal to determine which surface has been hit.
-            normal = geometry.normal(ray.position)
+            # normal = geometry.normal(ray.position)
             # print(self, surface, ray, geometry, container, adjacent)
             # exit()
             # Normal are outward facing
@@ -373,24 +472,13 @@ def structure_box(parent):
                                                                          adjacent)
             else:
                 # print(x, y, z)
-                return 0.9
+                return 1
             # If a ray hits the top surface where x > 0 and y > 0 reflection
             # set the reflectivity to 1.
-            if np.allclose(normal, BOT_SURFACE):
-                x, y = ray.position[0], ray.position[1]
-                if x > -0.5 and y > -0.5:
-                    return 1
-            print(super(PartialTopSurfaceMirror, self).reflected_direction(surface, ray, geometry, container,
-                                                                     adjacent))
-            # direction = self.phase_function()
-            # ray = replace(ray, direction=direction, source=self.name)
-            # return ray
-            # direction = self.delegate.reflected_direction(
-            #     self, ray, geometry, container, adjacent
-            # )
-            # Otherwise return the Frensel reflection probability.
-            return super(PartialTopSurfaceMirror, self).reflectivity(surface, ray, geometry, container,
-                                                                     adjacent)  # opt-out of handling custom reflection
+            # if np.allclose(normal, BOT_SURFACE):
+            #     x, y = ray.position[0], ray.position[1]
+            #     if x > -0.5 and y > -0.5:
+            #         return 1
 
     # box2 = pv.Node(
     #     name="box_2",
@@ -404,9 +492,9 @@ def structure_box(parent):
     #             ],
     #             surface=pv.Surface(delegate=PartialTopSurfaceMirror())
 
-            # ),
-        # ),
-        # parent=parent
+    # ),
+    # ),
+    # parent=parent
     # )
     box = pv.Node(
         name="box_1",
@@ -415,10 +503,10 @@ def structure_box(parent):
             # radius=3,
             material=pv.Material(
                 refractive_index=1.05,
-                # surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
+                surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
                 components=[
-                    pv.Absorber(coefficient=0.1),
-                    pv.Scatterer(coefficient=0.00001)
+                    pv.Absorber(coefficient=0.0000000001),
+                    pv.Scatterer(coefficient=0.00000001)
                 ],
 
             ),
@@ -454,11 +542,11 @@ def structure_box(parent):
     #                 pv.Absorber(coefficient=0.001),
     #                 pv.Scatterer(coefficient=0.001)
     #             ],
-                # surface=pv.Surface(delegate=PartialTopSurfaceMirror())
-            #
-            # ),
-        # ),
-        # parent=parent
+    # surface=pv.Surface(delegate=PartialTopSurfaceMirror())
+    #
+    # ),
+    # ),
+    # parent=parent
     # )
     # box3.translate((0, 0, 1))
 
@@ -608,6 +696,7 @@ def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-
     # except IndexError:
     #     pass
 
+
 def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-1, 1), y_max_min=(-1, 1)):
     grid_xy = fg.create_mesh_XY(xMinMax=x_max_min, yMinMax=y_max_min, xRes=x_res, yRes=y_res)
     xAr_, yAr_ = fg.arrays_from_mesh(grid_xy)
@@ -689,15 +778,16 @@ def lines_dots(positions):
 
     return dot_ans
 
+
 if __name__ == '__main__':
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
     scene = pv_scene_real()
-    positions = cs.scene_render_and_positions(scene, rays_number=10, show_3d=False)
+    positions = cs.scene_render_and_positions(scene, rays_number=1, show_3d=True)
+    time.sleep(10)
     lines_dots(positions)
     exit()
     # positions = cs.scene_render_and_positions(scene, rays_number=50, show_3d=True)
-    # time.sleep(10)
     # exit()
     x_res, y_res = 201, 201
     xM = -2, 2
@@ -718,7 +808,7 @@ if __name__ == '__main__':
             )
             full_field.append(field)
         full_field = np.array(full_field)
-        plt.imshow(full_field[:, :, y_res//2], cmap='nipy_spectral', interpolation='bilinear',
+        plt.imshow(full_field[:, :, y_res // 2], cmap='nipy_spectral', interpolation='bilinear',
                    extent=[xM[0], xM[1], yM[0], yM[1]])
         plt.tight_layout()
         plt.show()
@@ -808,4 +898,3 @@ if __name__ == '__main__':
                 plt.ylim(-2, 2)
                 plt.tight_layout()
                 plt.show()
-
