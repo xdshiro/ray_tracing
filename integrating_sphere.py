@@ -334,24 +334,33 @@ def structure_box(parent):
         # R2 = np.array([Xp, Xn, Xc])
         # transform2 = np.matmul(R1, R2.T)
         def reflected_direction(self, surface, ray, geometry, container, adjacent):
+            """
+            Implementation of the scattering surface. We can control the scattering angles in scattered_angles.
+            Vector transformation works only for a box rn, need to implement the general case.
+            :return: direction of the scattered beam
+            """
+
             # basis surface (bottom, directed upwards)
-            xn0, yn0, zy0 = 0, 0, -1
+            # xn0, yn0, zy0 = 0, 0, -1
 
             def scattered_angles():
+                """
+                Angles onf the scattered from the surface beams. (horizontal plane. Other planes
+                are implemented via linear algebra transformations)
+                :return: phi, theta of the scattered beam.
+                """
                 p1, p2 = np.random.uniform(0, 1, 2)
                 # theta = np.arcsin(np.sqrt(p1) * np.sin(theta_max))
                 phi = 2 * np.pi * p2
                 # phi = np.pi / 5
-                theta = np.pi / 5
+                theta = 0.9 * 0.5 * np.pi * p2
                 return phi, theta
 
             def perpendicular_vector_3D(X):
                 """
-                add the real case, not the cube!!!!!!!!!!!!!!!
-                :param x:
-                :param y:
-                :param z:
-                :return:
+                add the real case, rn only for BOXes
+                :param X: vector 3D.
+                :return: Any perpendicular vector to X
                 """
                 x, y, z = X
                 if x == 0 and y == 0:
@@ -362,7 +371,7 @@ def structure_box(parent):
                     return 0, 1, 0
 
             # current surface normal
-            xn, yn, zn = geometry.normal(ray.position)
+            # xn, yn, zn = geometry.normal(ray.position)
             # xp, yp, zp = perpendicular_vector_3D(xn, yn, zn)
             # xc, yc, zc = np.cross([xn, yn, zn], [xp, yp, zp])
             u = np.array((0, 0, -1))
@@ -376,11 +385,11 @@ def structure_box(parent):
             xy = np.cross(x, y)
             # print(u, v, uv)
             # print(x, y, xy)
-            transform3 = np.array([
-                [np.dot(x, u), np.dot(x, v), np.dot(x, uv)],
-                [np.dot(y, u), np.dot(y, v), np.dot(y, uv)],
-                [np.dot(xy, u), np.dot(xy, v), np.dot(xy, uv)]
-            ])
+            # transform3 = np.array([
+            #     [np.dot(x, u), np.dot(x, v), np.dot(x, uv)],
+            #     [np.dot(y, u), np.dot(y, v), np.dot(y, uv)],
+            #     [np.dot(xy, u), np.dot(xy, v), np.dot(xy, uv)]
+            # ])
             R1 = np.array([u, v, uv])
             R2 = np.array([x, y, xy])
             transform3 = np.matmul(R1.T, R2)
@@ -388,7 +397,7 @@ def structure_box(parent):
             # exit()
             phi_new, theta_new = scattered_angles()
             # print(np.matmul(x, transform3), u)
-            print(np.matmul(u, transform3), x)
+            # print(np.matmul(u, transform3), x)
             # print(np.matmul(u, transform3.T), x)
             # print(np.matmul(x, transform3.T), u)
             # print(np.matmul(x.T, transform3), u)
@@ -397,7 +406,7 @@ def structure_box(parent):
             # print(np.matmul(transform3.T, x), u)
             # print(np.matmul(transform3.T, u), x)
             # print(np.matmul(transform3, x.T), u)
-            print('a')
+            # print('a')
             # print(np.matmul(v, transform3), y)
             # print(np.matmul(uv, transform3), xy)
             x = np.sin(theta_new) * np.cos(phi_new)
@@ -412,21 +421,21 @@ def structure_box(parent):
             Xnew = tuple(np.matmul(Xnew0, transform3))
             return Xnew
 
-            _, phi0, theta0 = fg.spherical_coordinates(xn0, yn0, zy0)
-            _, phin, thetan = fg.spherical_coordinates(xn, yn, zn)
-
-            phi_delta, theta_delta = phin - phi0, thetan - theta0
-
-            phi, theta = scattered_angles()
-            phi_new, theta_new = phi + phi_delta, theta + theta_delta
-
-            x = np.sin(theta_new) * np.cos(phi_new)
-            y = np.sin(theta_new) * np.sin(phi_new)
-            z = np.cos(theta_new)
-            print(x, y, z)
+            # _, phi0, theta0 = fg.spherical_coordinates(xn0, yn0, zy0)
+            # _, phin, thetan = fg.spherical_coordinates(xn, yn, zn)
+            #
+            # phi_delta, theta_delta = phin - phi0, thetan - theta0
+            #
+            # phi, theta = scattered_angles()
+            # phi_new, theta_new = phi + phi_delta, theta + theta_delta
+            #
+            # x = np.sin(theta_new) * np.cos(phi_new)
+            # y = np.sin(theta_new) * np.sin(phi_new)
+            # z = np.cos(theta_new)
+            # print(x, y, z)
             # coords = tuple(spherical_to_cart(theta_new, phi_new))
 
-            return x, y, z
+            # return x, y, z
             # normal = geometry.normal(ray.position)
             # if np.allclose(normal, TOP_SURFACE):
             #     return 0, 0, -1
@@ -472,7 +481,7 @@ def structure_box(parent):
                                                                          adjacent)
             else:
                 # print(x, y, z)
-                return 1
+                return 0.9
             # If a ray hits the top surface where x > 0 and y > 0 reflection
             # set the reflectivity to 1.
             # if np.allclose(normal, BOT_SURFACE):
@@ -697,7 +706,60 @@ def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-
     #     pass
 
 
-def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-1, 1), y_max_min=(-1, 1)):
+def lines_dots(positions, x_res, y_res, z_res,
+               x_max_min=(-1, 1), y_max_min=(-1, 1), z_max_min=(-1, 1),
+               length_line=1, res_line=4):
+    """
+    Line : (x-x1)/(x2-x1) = (y-y1)/(y2-y1) = (z-z1)/(z2-z1)
+    Parametric :
+        x = x1 + (x2 - x1) * a
+        y = y1 + (y2 - y1) * a
+        z = z1 + (z2 - z1) * a
+    :param positions:
+    :return:
+    """
+
+    def dots_from_line(dot1, dot2):
+        x1, y1, z1 = dot1
+        x2, y2, z2 = dot2
+        line = dot2 - dot1
+        len_line = np.sqrt((line * line).sum())
+        res = int(res_line * len_line / length_line)
+        a = np.linspace(0, 1, res)
+        x = x1 + (x2 - x1) * a
+        y = y1 + (y2 - y1) * a
+        z = z1 + (z2 - z1) * a
+        dots = np.array((x, y, z)).T
+        ind_delete = []
+        for i, dot in enumerate(dots):
+            if (dot[0] < x_max_min[0] or dot[0] > x_max_min[1]
+                    or dot[1] < y_max_min[0] or dot[1] > y_max_min[1]
+                    or dot[2] < z_max_min[0] or dot[2] > z_max_min[1]):
+                ind_delete.append(i)
+        dots_cut = np.delete(dots, ind_delete, axis=0)
+        return dots_cut
+
+    delta_x = (x_max_min[1] - x_max_min[0]) / (x_res - 1)
+    delta_y = (y_max_min[1] - y_max_min[0]) / (y_res - 1)
+    delta_z = (z_max_min[1] - z_max_min[0]) / (z_res - 1)
+    scale_coeff_x = 1 / delta_x
+    scale_coeff_y = 1 / delta_y
+    scale_coeff_z = 1 / delta_z
+    dots_all_rays = []
+    for dots in positions:
+        dot1 = dots[0]
+        for dot2 in dots[1:]:
+            dots_scaled = dots_from_line(dot1, dot2) * [scale_coeff_x, scale_coeff_y, scale_coeff_z]
+            dots_round = np.rint(dots_scaled).astype(int)
+            dots_unique = np.unique(dots_round, axis=0)
+            dots_all_rays.append(dots_unique)
+
+            dot1 = dot2
+    dots = np.concatenate(np.array(dots_all_rays, dtype=object), axis=0)
+    return dots
+
+
+def array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=(-1, 1), y_max_min=(-1, 1), z_max_min=(-1, 1)):
     grid_xy = fg.create_mesh_XY(xMinMax=x_max_min, yMinMax=y_max_min, xRes=x_res, yRes=y_res)
     xAr_, yAr_ = fg.arrays_from_mesh(grid_xy)
     scale_coeff_x = 1 / (xAr_[1] - xAr_[0])
@@ -715,83 +777,31 @@ def field_from_crossings_2D(crossings_x, crossings_y, x_res, y_res, x_max_min=(-
     return field
 
 
-def lines_dots(positions):
-    """
-    Line : (x-x1)/(x2-x1) = (y-y1)/(y2-y1) = (z-z1)/(z2-z1)
-    Parametric :
-        x = x1 + (x2 - x1) * a
-        y = y1 + (y2 - y1) * a
-        z = z1 + (z2 - z1) * a
-    :param positions:
-    :return:
-    """
-    for dots in positions:
-        dot1 = dots[0]
-        for dot2 in dots[1:]:
-            pass
-            dot1 = dot2
-    exit()
-    """
-    Function finds the crossing of the line (in between dot1 and dot2) and the plane.
-    Line : (x-x1)/(x2-x1) = (y-y1)/(y2-y1) = (z-z1)/(z2-z1)
-
-    Plane: Ax + By + Cz + D = 0
-    |x-x1  y-y1  z-z1 |
-    |x2-x1 y2-y1 z2-z1| = 0
-    |x3-x1 y3-y1 z3-z1|
-    Example:
-    (-5, -5, 0), (-5, 5, 0), (5, 5, 0)
-    z = 0
-    (https://ru.onlinemschool.com/math/assistance/cartesian_coordinate/plane/)
-
-    Crossing: https://matworld.ru/analytic-geometry/tochka-peresechenija-prjamoj-i-ploskosti.php
-    (look at equations, ignore the text)
-    :param dot1: (x1, y1, z1)
-    :param dot2: (x2, y2, z2)
-    :param plane: (A, B, C, D) where Ax + By + Cz + D = 0
-    :param check_segment: if True, checking if the don is on the segment in between dot1 and dot2
-    :return: dot: (x, y ,z) or None if there is no crossing
-    """
-    x1, y1, z1 = dot1
-    x2, y2, z2 = dot2
-    m1 = x2 - x1
-    p1 = y2 - y1
-    l1 = z2 - z1
-    # z = D plane
-    A, B, C, D = plane
-    matrix = [[p1, -m1, 0], [0, l1, -p1], [A, B, C]]
-    vector = [[p1 * x1 - m1 * y1], [l1 * y1 - p1 * z1], [-D]]
-    try:
-        dot_cross = np.linalg.solve(matrix, vector)
-        if not np.allclose(np.dot(matrix, dot_cross), vector):
-            print(f'WRONG CROSSINGS')
-        dot_ans = np.array([dot_cross[0, 0], dot_cross[1, 0], dot_cross[2, 0]])
-    except np.linalg.LinAlgError:
-        dot_cross = None
-
-    if check_segment:
-        check = dot_on_segment(dot_cross, dot1, dot2)
-        if check:
-            return dot_ans
-        else:
-            return None
-
-    return dot_ans
-
-
 if __name__ == '__main__':
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
     scene = pv_scene_real()
-    positions = cs.scene_render_and_positions(scene, rays_number=1, show_3d=True)
-    time.sleep(10)
-    lines_dots(positions)
+    positions = cs.scene_render_and_positions(scene, rays_number=3, show_3d=True)
+    time.sleep(3)
+    # UPDATE ALL THE CROSSECTIONS
+    x_res, y_res, z_res = 201, 101, 201
+    xM = -1, 1
+    yM = -0.5, 0.5
+    zM = -1, 1
+    dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
+                      x_max_min=xM, y_max_min=yM, z_max_min=zM,
+                      res_line=501, length_line=4)
+    print(len(dots))
+    # print((dots))
+    # exit()
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(dots[:, 0], dots[:, 1], dots[:, 2])
+    plt.show()
     exit()
     # positions = cs.scene_render_and_positions(scene, rays_number=50, show_3d=True)
     # exit()
-    x_res, y_res = 201, 201
-    xM = -2, 2
-    yM = -2, 2
+
     # grid_xyz = fg.create_mesh_XYZ(xMax=3, yMax=3, zMax=2, xRes=x_res, yRes=y_res, zRes=z_res, xMin=-3, yMin=-3, zMin=-2)
     # xAr_, yAr_, zAr_ = fg.arrays_from_mesh(grid_xyz)
     # scale_coeff_xyz = np.array([1 / (xAr_[1] - xAr_[0]), 1 / (yAr_[1] - yAr_[0]), 1 / (zAr_[1] - zAr_[0])])

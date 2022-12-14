@@ -56,6 +56,7 @@ def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browse
         positions.append(np.array(positions_ray))
         if show_3d:
             vis.add_ray_path(path)
+
     if show_3d:
         pass
         # vis = pv.MeshcatRenderer(wireframe=True)
