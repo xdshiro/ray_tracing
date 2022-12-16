@@ -475,13 +475,13 @@ def structure_box(parent):
             # Normal are outward facing
 
             x, y, z = ray.position[0], ray.position[1], ray.position[2]
-
             if np.isclose(z, 1) and np.abs(x) < 0.3 and np.abs(y) < 0.3:
                 return super(PartialTopSurfaceMirror, self).reflectivity(surface, ray, geometry, container,
                                                                          adjacent)
             else:
+                # ray.alive = False
                 # print(x, y, z)
-                return 0.9
+                return 1.0
             # If a ray hits the top surface where x > 0 and y > 0 reflection
             # set the reflectivity to 1.
             # if np.allclose(normal, BOT_SURFACE):
@@ -514,8 +514,8 @@ def structure_box(parent):
                 refractive_index=1.05,
                 surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
                 components=[
-                    pv.Absorber(coefficient=0.0000000001),
-                    pv.Scatterer(coefficient=0.00000001)
+                    pv.Absorber(coefficient=0.1),
+                    pv.Scatterer(coefficient=1.0)
                 ],
 
             ),
@@ -760,38 +760,54 @@ def lines_dots(positions, x_res, y_res, z_res,
 
 
 def array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=(-1, 1), y_max_min=(-1, 1), z_max_min=(-1, 1)):
-    grid_xy = fg.create_mesh_XY(xMinMax=x_max_min, yMinMax=y_max_min, xRes=x_res, yRes=y_res)
-    xAr_, yAr_ = fg.arrays_from_mesh(grid_xy)
-    scale_coeff_x = 1 / (xAr_[1] - xAr_[0])
-    scale_coeff_y = 1 / (yAr_[1] - yAr_[0])
-    crossings_scaled_x = crossings_x * scale_coeff_x
-    crossings_scaled_y = crossings_y * scale_coeff_y
-    crossings_scaled_x_round = np.rint(crossings_scaled_x).astype(int)  # !!!!!!!!!!!!!!!!
-    crossings_scaled_y_round = np.rint(crossings_scaled_y).astype(int)
-    # crossings_scaled = np.multiply(crossings_scaled_round, 1 / scale_coeff_xyz)
-    field = np.zeros((x_res, y_res))
-    for dot_scaled in zip(crossings_scaled_x_round, crossings_scaled_y_round):
-        dot = np.multiply(dot_scaled, (1 / scale_coeff_x, 1 / scale_coeff_y))
-        if (x_max_min[0] <= dot[0] <= x_max_min[1]) and (y_max_min[0] <= dot[1] <= y_max_min[1]):
-            field[dot_scaled[0] + x_res // 2, dot_scaled[1] + y_res // 2] += 1
-    return field
+    print(len(dots))
+    # x_max = x_max_min[1] - x_max_min[0]
+    x_cen = int((- x_max_min[0]) / (x_max_min[1] - x_max_min[0]) * x_res)
+    y_cen = int((- y_max_min[0]) / (y_max_min[1] - y_max_min[0]) * y_res)
+    z_cen = int((- z_max_min[0]) / (z_max_min[1] - z_max_min[0]) * z_res)
+    dots_centered = dots + (x_cen, y_cen, z_cen)
+    dots_new = np.zeros((x_res, y_res, z_res))
+    for dot in dots_centered:
+        dots_new[dot[0], dot[1], dot[2]] += 1
+    return dots_new
+
+    # return field
+
+
+def array_3D_intensity_from_dots_avg(dots_3D):
+    x_res, y_res, z_res = np.shape(dots_3D)
+    dots_ans = np.zeros((x_res, y_res, z_res))
+    dots_pad = np.pad(dots_3D, 1, 'linear_ramp')  # end_values=(0, 0, 0))
+    for i in range(1, x_res + 1):
+        for j in range(1, y_res + 1):
+            for k in range(1, z_res + 1):
+                dots_ans[i - 1, j - 1, k - 1] = np.sum(dots_pad[i - 1:i + 2, j - 1:j + 2, k - 1:k + 2]) / 27
+    return dots_ans
 
 
 if __name__ == '__main__':
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
     scene = pv_scene_real()
-    positions = cs.scene_render_and_positions(scene, rays_number=3, show_3d=True)
-    time.sleep(3)
+    positions = cs.scene_render_and_positions(scene, rays_number=10000, show_3d=False)
+    time.sleep(2)
+    # exit()
     # UPDATE ALL THE CROSSECTIONS
     x_res, y_res, z_res = 201, 101, 201
     xM = -1, 1
     yM = -0.5, 0.5
-    zM = -1, 1
+    zM = -1, 2
     dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
                       x_max_min=xM, y_max_min=yM, z_max_min=zM,
-                      res_line=501, length_line=4)
-    print(len(dots))
+                      res_line=201, length_line=1)
+    # print(len(dots))
+    dots_3D = array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=xM, y_max_min=yM, z_max_min=zM)
+    dots_3D_avg = array_3D_intensity_from_dots_avg(dots_3D)
+    # exit()
+    plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+    plt.imshow(dots_3D_avg[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+    plt.show()
+    exit()
     # print((dots))
     # exit()
     fig = plt.figure()
