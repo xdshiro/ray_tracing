@@ -22,6 +22,9 @@ import my_functions.functions_general as fg
 import my_functions.singularities as sing
 import my_functions.plotings as pl
 import my_functions.beams_and_pulses as bp
+from dataclasses import replace
+from numpy.random import Generator, PCG64, SeedSequence
+rng = Generator(PCG64(SeedSequence(103)))
 
 # Some packages used by pvtrace are a little noisy
 
@@ -245,7 +248,7 @@ def collimated_beam(r):
 
 
 def light_beam(parent):
-    r = 0.05
+    r = 0.03
     light = pv.Node(
         name="Light (555nm)",
         light=pv.Light(position=functools.partial(collimated_beam, r),
@@ -349,12 +352,18 @@ def structure_box(parent):
                 are implemented via linear algebra transformations)
                 :return: phi, theta of the scattered beam.
                 """
-                p1, p2 = np.random.uniform(0, 1, 2)
-                # theta = np.arcsin(np.sqrt(p1) * np.sin(theta_max))
-                phi = 2 * np.pi * p2
-                # phi = np.pi / 5
-                theta = 0.9 * 0.5 * np.pi * p2
-                return phi, theta
+                absorbtion = 0.9
+                roll_the_dice = np.random.uniform(0, 1, 1)
+                if roll_the_dice > absorbtion:
+                    return 0, np.pi
+                else:
+                    p1, p2 = rng.uniform(0, 1, 2)
+                    # theta = np.arcsin(np.sqrt(p1) * np.sin(theta_max))
+                    phi = 2 * np.pi * p1
+                    # phi = np.pi / 5
+                    theta = 0.96 * 0.5 * np.pi * p2
+
+                    return phi, theta
 
             def perpendicular_vector_3D(X):
                 """
@@ -481,6 +490,9 @@ def structure_box(parent):
             else:
                 # ray.alive = False
                 # print(x, y, z)
+                # ray = replace(ray, direction=direction, wavelength=wavelength, source=self.name)
+
+                # exit()
                 return 1.0
             # If a ray hits the top surface where x > 0 and y > 0 reflection
             # set the reflectivity to 1.
@@ -489,22 +501,7 @@ def structure_box(parent):
             #     if x > -0.5 and y > -0.5:
             #         return 1
 
-    # box2 = pv.Node(
-    #     name="box_2",
-    #     geometry=pv.Box(
-    #         (2.0 * 1.001, 1.0 * 1.001, 2 * 1.001),
-    #         material=pv.Material(
-    #             refractive_index=1.08,
-    #             components=[
-    #                 pv.Absorber(coefficient=1.),
-    #                 pv.Scatterer(coefficient=5000.001)
-    #             ],
-    #             surface=pv.Surface(delegate=PartialTopSurfaceMirror())
 
-    # ),
-    # ),
-    # parent=parent
-    # )
     box = pv.Node(
         name="box_1",
         geometry=pv.Box(
@@ -515,49 +512,14 @@ def structure_box(parent):
                 surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
                 components=[
                     pv.Absorber(coefficient=0.1),
-                    pv.Scatterer(coefficient=1.0)
+                    pv.Scatterer(coefficient=2.)
                 ],
 
             ),
         ),
         parent=parent
     )
-    # box3 = pv.Node(
-    #     name="box_3",
-    #     geometry=pv.Box(
-    #         (0.5, 0.5, 0.02),
-    #         material=pv.Material(
-    #             refractive_index=1.08,
-    #             components=[
-    #                 pv.Absorber(coefficient=0.001),
-    #                 pv.Scatterer(coefficient=0.001)
-    #             ],
-    # surface=pv.Surface(delegate=PartialTopSurfaceMirror())
-    #
-    # ),
-    # ),
-    # parent=parent
-    # )
-    # box3.translate((0, 0, 1))
 
-    #
-    # box3 = pv.Node(
-    #     name="box_3",
-    #     geometry=pv.Box(
-    #         (0.5, 0.5, 0.02),
-    #         material=pv.Material(
-    #             refractive_index=1.08,
-    #             components=[
-    #                 pv.Absorber(coefficient=0.001),
-    #                 pv.Scatterer(coefficient=0.001)
-    #             ],
-    # surface=pv.Surface(delegate=PartialTopSurfaceMirror())
-    #
-    # ),
-    # ),
-    # parent=parent
-    # )
-    # box3.translate((0, 0, 1))
 
 
 def pv_scene_real(structure=structure_box, light=light_beam):
@@ -786,26 +748,43 @@ def array_3D_intensity_from_dots_avg(dots_3D):
 
 
 if __name__ == '__main__':
+    # a = np.array([[1, 2, 3], [1, 2, 3]])
+    # a[a > 1] = 2
+    # print(a)
+    # exit()
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
     scene = pv_scene_real()
-    positions = cs.scene_render_and_positions(scene, rays_number=10000, show_3d=False)
+    positions = cs.scene_render_and_positions(scene, rays_number=35000, show_3d=False)
     time.sleep(2)
     # exit()
     # UPDATE ALL THE CROSSECTIONS
-    x_res, y_res, z_res = 201, 101, 201
+    x_res, y_res, z_res = 122, 61, 183
     xM = -1, 1
     yM = -0.5, 0.5
     zM = -1, 2
     dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
                       x_max_min=xM, y_max_min=yM, z_max_min=zM,
-                      res_line=201, length_line=1)
+                      res_line=301, length_line=1)
     # print(len(dots))
     dots_3D = array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=xM, y_max_min=yM, z_max_min=zM)
     dots_3D_avg = array_3D_intensity_from_dots_avg(dots_3D)
     # exit()
-    plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
-    plt.imshow(dots_3D_avg[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+    # plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+    # plt.show()
+    # plt.imshow(dots_3D_avg[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+    # plt.show()
+    # dots_3D_sat = np.array(dots_3D_avg)
+    # max = np.max(dots_3D_sat) * 0.5
+    # dots_3D_sat[dots_3D_sat > max] = max
+    # plt.imshow(dots_3D_sat[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+    # plt.show()
+    dots_3D_sat = np.array(dots_3D_avg)
+    max = np.max(dots_3D_sat) * 0.02
+    dots_3D_sat[dots_3D_sat > max] = max
+    plt.imshow(dots_3D_sat[:, y_res // 2, :].T, cmap='jet', interpolation='bilinear')
+    plt.show()
+    plt.imshow(dots_3D_sat[:, :, 0].T, cmap='jet', interpolation='bilinear')
     plt.show()
     exit()
     # print((dots))
