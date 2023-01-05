@@ -24,6 +24,8 @@ import my_functions.plotings as pl
 import my_functions.beams_and_pulses as bp
 from dataclasses import replace
 from numpy.random import Generator, PCG64, SeedSequence
+from scipy import signal
+
 rng = Generator(PCG64(SeedSequence(103)))
 
 # Some packages used by pvtrace are a little noisy
@@ -501,7 +503,6 @@ def structure_box(parent):
             #     if x > -0.5 and y > -0.5:
             #         return 1
 
-
     box = pv.Node(
         name="box_1",
         geometry=pv.Box(
@@ -512,14 +513,13 @@ def structure_box(parent):
                 surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
                 components=[
                     pv.Absorber(coefficient=0.1),
-                    pv.Scatterer(coefficient=2.)
+                    pv.Scatterer(coefficient=4.)
                 ],
 
             ),
         ),
         parent=parent
     )
-
 
 
 def pv_scene_real(structure=structure_box, light=light_beam):
@@ -755,7 +755,7 @@ if __name__ == '__main__':
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
     scene = pv_scene_real()
-    positions = cs.scene_render_and_positions(scene, rays_number=35000, show_3d=False)
+    positions = cs.scene_render_and_positions(scene, rays_number=60000, show_3d=False)
     time.sleep(2)
     # exit()
     # UPDATE ALL THE CROSSECTIONS
@@ -765,7 +765,7 @@ if __name__ == '__main__':
     zM = -1, 2
     dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
                       x_max_min=xM, y_max_min=yM, z_max_min=zM,
-                      res_line=301, length_line=1)
+                      res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
     # print(len(dots))
     dots_3D = array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=xM, y_max_min=yM, z_max_min=zM)
     dots_3D_avg = array_3D_intensity_from_dots_avg(dots_3D)
@@ -782,9 +782,23 @@ if __name__ == '__main__':
     dots_3D_sat = np.array(dots_3D_avg)
     max = np.max(dots_3D_sat) * 0.02
     dots_3D_sat[dots_3D_sat > max] = max
-    plt.imshow(dots_3D_sat[:, y_res // 2, :].T, cmap='jet', interpolation='bilinear')
+    plt.imshow(dots_3D_sat[:, y_res // 2, :].T, cmap='hot', interpolation='bilinear')
     plt.show()
-    plt.imshow(dots_3D_sat[:, :, 0].T, cmap='jet', interpolation='bilinear')
+    plt.imshow(dots_3D_sat[:, :, 0].T, cmap='hot', interpolation='bilinear')
+    plt.show()
+
+
+    kernel_size = 10
+    t = 1 - np.abs(np.linspace(-1, 1, kernel_size))
+    kernel = t.reshape(kernel_size, 1) * t.reshape(1, kernel_size)
+    kernel /= kernel.sum()
+    field = dots_3D_sat[:, y_res // 2, :].T
+    field_k = signal.convolve2d(field, kernel, mode='valid')
+    plt.imshow(field_k, cmap='hot', interpolation='bilinear')
+    plt.show()
+    field = dots_3D_sat[:, :, 0].T
+    field_k = signal.convolve2d(field, kernel, mode='valid')
+    plt.imshow(field_k, cmap='hot', interpolation='bilinear')
     plt.show()
     exit()
     # print((dots))
