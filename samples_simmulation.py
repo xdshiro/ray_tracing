@@ -25,13 +25,26 @@ import numpy
 import numpy as np
 import matplotlib.pyplot as plt
 import pvtrace as pv
+from numpy.random import Generator, PCG64, SeedSequence
+rng = Generator(PCG64(SeedSequence(103)))
 
 logging.getLogger('trimesh').disabled = True
 logging.getLogger('shapely.geos').disabled = True
 logging.getLogger('matplotlib').setLevel(logging.CRITICAL)
 
 
-
+def cylindrical_to_cart(r, phi, z=0):
+    """
+    transformation of the spherical coordinates to cartesiane coordinates
+    :return: x y z
+    """
+    x = r * np.cos(phi)
+    y = r * np.sin(phi)
+    z = z
+    cart = np.column_stack((x, y, z))
+    if cart.size == 3:
+        return cart[0, :]
+    return cart
 def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browser=True, show_3d=True):
     """
     The main purpose of this function is to propagate rays and return all there trajectories, as
@@ -46,8 +59,9 @@ def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browse
     positions = []
     np.random.seed(random_seed)
     if show_3d:
-        vis = pv.MeshcatRenderer(wireframe=True, open_browser=open_browser)
+        vis = pv.MeshcatRenderer(wireframe=True, open_browser=True)
         vis.render(scene)
+        # vis = pv.MeshcatRenderer(wireframe=True, open_browser=open_browser)
     for rays in scene.emit(rays_number):
         steps = pv.photon_tracer.follow(scene, rays)
         path, decisions = zip(*steps)
@@ -59,9 +73,9 @@ def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browse
             vis.add_ray_path(path)
 
     if show_3d:
-        # vis.render(scene)
-        pass
-        vis = pv.MeshcatRenderer(wireframe=True)
+        # pass
+        # vis = pv.MeshcatRenderer(wireframe=True)
+        vis.render(scene)
     return positions
 
 
@@ -327,12 +341,33 @@ def plot_scene_2D(scene, plane):
             if x is not None:
                 plt.scatter(x, y, color='g')
 
+def collimated_beam(r):
+    """ Samples directions within a cone of solid angle defined by `theta_max`.
 
+        Notes
+        -----
+        Derived as follows using sympy::
+
+            from sympy import *
+            theta, theta_max, p = symbols('theta theta_max p')
+            f = cos(theta) * sin(theta)
+            cdf = integrate(f, (theta, 0, theta))
+            pdf = cdf / cdf.subs({theta: theta_max})
+            inv_pdf = solve(Eq(pdf, p), theta)[-1]
+    """
+    if np.isclose(r, 0.0):
+        raise ValueError("Expected 0 < r")
+    r_random = np.random.normal(0, r, 1)
+    p2 = np.random.uniform(0, 1, 1)
+    phi = 2 * np.pi * p2
+    coords = cylindrical_to_cart(r_random, phi, 0)
+
+    return coords
 def main_create_scene_test():
     world = pv.Node(
         name="world (air)",
         geometry=pv.Sphere(
-            radius=3.0,
+            radius=10,
             material=pv.Material(refractive_index=1.0,
 
                                  )
@@ -378,25 +413,241 @@ def main_create_scene_test():
     # )
     #
     # sphere3.translate((0, -0.2, -0.2))
+    class PartialTopSurfaceMirror(pv.FresnelSurfaceDelegate):
+        """ A section of the top surface is covered with a perfect mirrrors.
+
+            All other surface obey the Fresnel equations.
+        """
+
+        # print(super(PartialTopSurfaceMirror, self).reflected_direction(surface, ray, geometry, container,
+        #                                                                adjacent))
+        # Xn0 = np.array((0, 0, -1))
+        # # Xp0 = perpendicular_vector_3D(Xn0)
+        # # Xc0 = np.cross(Xp0, Xn0)
+        # # print(Xn0, Xp0, Xc0)
+        # # exit()
+        # Xp0 = np.array((1, 0, 0))
+        # Xc0 = np.array((0, 1, 0))
+        # Xn = geometry.normal(ray.position)
+        # Xp = perpendicular_vector_3D(Xn)
+        # Xc = np.cross(Xp, Xn)
+        # dir0, up0, cross0 = Xp0, Xn0, Xc0
+        # dir, up, cross = Xp, Xn, Xc
+        # transform = [
+        #     [np.dot(Xn, Xn0), np.dot(Xp, Xn0), np.dot(Xc, Xn0)],
+        #     [np.dot(Xn, Xp0), np.dot(Xp, Xp0), np.dot(Xc, Xp0)],
+        #     [np.dot(Xn, Xc0), np.dot(Xp, Xc0), np.dot(Xc, Xc0)]
+        # ]
+        # R1 = np.array([Xp0, Xn0, Xc0])
+        # R2 = np.array([Xp, Xn, Xc])
+        # transform2 = np.matmul(R1, R2.T)
+        def reflected_direction(self, surface, ray, geometry, container, adjacent):
+            """
+            Implementation of the scattering surface. We can control the scattering angles in scattered_angles.
+            Vector transformation works only for a box rn, need to implement the general case.
+            :return: direction of the scattered beam
+            """
+
+            # basis surface (bottom, directed upwards)
+            # xn0, yn0, zy0 = 0, 0, -1
+
+            def scattered_angles(absorption=0.9):
+                """
+                Angles onf the scattered from the surface beams. (horizontal plane. Other planes
+                are implemented via linear algebra transformations)
+                :return: phi, theta of the scattered beam.
+                """
+                roll_the_dice = np.random.uniform(0, 1, 1)
+                if roll_the_dice > absorption:
+                    return 0, np.pi
+                else:
+                    p1, p2 = rng.uniform(0, 1, 2)
+                    # theta = np.arcsin(np.sqrt(p1) * np.sin(theta_max))
+                    phi = 2 * np.pi * p1
+                    # phi = np.pi / 5
+                    theta = 0.96 * 0.5 * np.pi * p2
+
+                    return phi, theta
+
+            def perpendicular_vector_3D(X):
+                """
+                add the real case, rn only for BOXes
+                :param X: vector 3D.
+                :return: Any perpendicular vector to X
+                """
+                x, y, z = X
+                if x == 0 and y == 0:
+                    return 1, 0, 0
+                elif x == 0 and z == 0:
+                    return 0, 0, 1
+                elif y == 0 and z == 0:
+                    return 0, 1, 0
+
+            # current surface normal
+            # xn, yn, zn = geometry.normal(ray.position)
+            # xp, yp, zp = perpendicular_vector_3D(xn, yn, zn)
+            # xc, yc, zc = np.cross([xn, yn, zn], [xp, yp, zp])
+            u = np.array((0, 0, -1))
+            v = perpendicular_vector_3D(u)
+            uv = np.cross(u, v)
+            # print(Xn0, Xp0, Xc0)
+            # exit()
+            x = geometry.normal(ray.position)
+            y = perpendicular_vector_3D(x)
+            # xy = np.array((x[0]*y[2]-x[2]*y[0],x[2]*y[0]-x[0]*y[2],x[0]*y[1]-x[1]*y[0]))
+            print(ray.position, x, y)
+            xy = np.cross(x, y)
+            # print(u, v, uv)
+            # print(x, y, xy)
+            # transform3 = np.array([
+            #     [np.dot(x, u), np.dot(x, v), np.dot(x, uv)],
+            #     [np.dot(y, u), np.dot(y, v), np.dot(y, uv)],
+            #     [np.dot(xy, u), np.dot(xy, v), np.dot(xy, uv)]
+            # ])
+            R1 = np.array([u, v, uv])
+            R2 = np.array([x, y, xy])
+            transform3 = np.matmul(R1.T, R2)
+            # print(transform3)
+            # exit()
+            phi_new, theta_new = scattered_angles(absorption=1)  # 0.9 ABSORBTION OF THE SURFACE
+            # print(np.matmul(x, transform3), u)
+            # print(np.matmul(u, transform3), x)
+            # print(np.matmul(u, transform3.T), x)
+            # print(np.matmul(x, transform3.T), u)
+            # print(np.matmul(x.T, transform3), u)
+            # print(np.matmul(transform3, x), u)
+            # print(np.matmul(transform3, u), x)
+            # print(np.matmul(transform3.T, x), u)
+            # print(np.matmul(transform3.T, u), x)
+            # print(np.matmul(transform3, x.T), u)
+            # print('a')
+            # print(np.matmul(v, transform3), y)
+            # print(np.matmul(uv, transform3), xy)
+            x = np.sin(theta_new) * np.cos(phi_new)
+            y = np.sin(theta_new) * np.sin(phi_new)
+            z = np.cos(theta_new)
+            # z = np.sin(theta_new) * np.cos(phi_new)
+            # y = np.sin(theta_new) * np.sin(phi_new)
+            # x = np.cos(theta_new)
+
+            Xnew0 = np.array((x, y, z))
+
+            Xnew = tuple(np.matmul(Xnew0, transform3))
+            return Xnew
+
+            # _, phi0, theta0 = fg.spherical_coordinates(xn0, yn0, zy0)
+            # _, phin, thetan = fg.spherical_coordinates(xn, yn, zn)
+            #
+            # phi_delta, theta_delta = phin - phi0, thetan - theta0
+            #
+            # phi, theta = scattered_angles()
+            # phi_new, theta_new = phi + phi_delta, theta + theta_delta
+            #
+            # x = np.sin(theta_new) * np.cos(phi_new)
+            # y = np.sin(theta_new) * np.sin(phi_new)
+            # z = np.cos(theta_new)
+            # print(x, y, z)
+            # coords = tuple(spherical_to_cart(theta_new, phi_new))
+
+            # return x, y, z
+            # normal = geometry.normal(ray.position)
+            # if np.allclose(normal, TOP_SURFACE):
+            #     return 0, 0, -1
+            # elif np.allclose(normal, BOT_SURFACE):
+            #     return x, y, z
+            # elif np.allclose(normal, LEFT_SURFACE):
+            #     return 1, 0, 0
+            # elif np.allclose(normal, RIGHT_SURFACE):
+            #     return -1, 0, 0
+            # elif np.allclose(normal, FRONT_SURFACE):
+            #     return 0, 1, 0
+            # elif np.allclose(normal, BACK_SURFACE):
+            #     return 0, -1, 0
+            # return normal
+            # return x, y, z
+
+        def reflectivity(self, surface, ray, geometry, container, adjacent):
+            """ Return the reflectivity of the part of the surface hit by the ray.
+
+                Parameters
+                ----------
+                surface: Surface
+                    The surface object belonging to the material.
+                ray: Ray
+                    The ray hitting the surface in the local coordinate system of the `geometry` object.
+                geometry: Geometry
+                    The object being hit (e.g. Sphere, Box, Cylinder, Mesh etc.)
+                container: Node
+                    The node containing the ray.
+                adjacent: Node
+                    The node that will contain the ray if the ray is transmitted.
+            """
+            # Get the surface normal to determine which surface has been hit.
+            # normal = geometry.normal(ray.position)
+            # print(self, surface, ray, geometry, container, adjacent)
+            # exit()
+            # Normal are outward facing
+
+            x, y, z = ray.position[0], ray.position[1], ray.position[2]
+            if np.isclose(z, 2.5) and np.abs(x) < 0.3 and np.abs(y) < 0.3:
+                return super(PartialTopSurfaceMirror, self).reflectivity(surface, ray, geometry, container,
+                                                                         adjacent)
+            else:
+                # ray.alive = False
+                # print(x, y, z)
+                # ray = replace(ray, direction=direction, wavelength=wavelength, source=self.name)
+
+                # exit()
+                return 1.0
+            # If a ray hits the top surface where x > 0 and y > 0 reflection
+            # set the reflectivity to 1.
+            # if np.allclose(normal, BOT_SURFACE):
+            #     x, y = ray.position[0], ray.position[1]
+            #     if x > -0.5 and y > -0.5:
+            #         return 1
     cylinder1 = pv.Node(
         name="cyl1 (glass)",
         geometry=pv.Cylinder(
-            radius=0.8,
-            length=5.5,
+            radius=1,
+            length=2,
             material=pv.Material(
-                refractive_index=1.5,
+                refractive_index=1.05,
+                components=[
+                                pv.Absorber(coefficient=1.1703),
+                                pv.Scatterer(coefficient=1.181)
+                            ]
 
             ),
         ),
         parent=world
     )
-    cylinder1.rotate(np.pi/2, [0, 1, 0])
+    # box = pv.Node(
+    #     name="cyl1 (glass)",
+    #     geometry=pv.Box(
+    #         (1.0, 1.0, 2),
+    #         material=pv.Material(
+    #             refractive_index=1.05,
+    #             surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
+    #             components=[
+    #                 pv.Absorber(coefficient=1.1),
+    #                 pv.Scatterer(coefficient=0.181)
+    #             ]
+    #
+    #         ),
+    #     ),
+    #     parent=world
+    # )
+    # cylinder1.rotate(np.pi/2, [0, 1, 0])
+
     # cylinder1.translate((0.5, -0.3, 0.2))
     # cylinder1.rotate(np.pi/5, [1, 0, 0])
     import functools
     light = pv.Node(
         name="Light (555nm)",
-        light=pv.Light(direction=functools.partial(pv.cone, np.pi / 32)),
+        # light=pv.Light(direction=functools.partial(pv.cone, np.pi / 32)),
+        light=pv.Light(position=functools.partial(collimated_beam, 0.1),
+                       wavelength=lambda: 555
+                       ),
         parent=world
     )
     light.translate((0.0, 0.0, 3))
@@ -408,6 +659,7 @@ def main_create_scene_test():
 if __name__ == '__main__':
 
     scene = main_create_scene_test()
+
     # positions = scene_render_and_positions(scene, rays_number=50, show_3d=True)
     positions = scene_render_and_positions(scene, rays_number=500, show_3d=True)
     # ax = plt.figure().add_subplot(projection='3d')

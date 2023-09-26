@@ -262,7 +262,7 @@ def light_beam(parent):
     light.rotate(np.pi, [1, 0, 0])
 
 
-def structure_box(parent):
+def structure_box(parent, absor=1e-10, scat=1e-10):
     # box = pv.Node(
     #     name="box_1",
     #     geometry=pv.Box(
@@ -348,15 +348,14 @@ def structure_box(parent):
             # basis surface (bottom, directed upwards)
             # xn0, yn0, zy0 = 0, 0, -1
 
-            def scattered_angles():
+            def scattered_angles(absorption=0.9):
                 """
                 Angles onf the scattered from the surface beams. (horizontal plane. Other planes
                 are implemented via linear algebra transformations)
                 :return: phi, theta of the scattered beam.
                 """
-                absorbtion = 0.9
                 roll_the_dice = np.random.uniform(0, 1, 1)
-                if roll_the_dice > absorbtion:
+                if roll_the_dice > absorption:
                     return 0, np.pi
                 else:
                     p1, p2 = rng.uniform(0, 1, 2)
@@ -406,7 +405,7 @@ def structure_box(parent):
             transform3 = np.matmul(R1.T, R2)
             # print(transform3)
             # exit()
-            phi_new, theta_new = scattered_angles()
+            phi_new, theta_new = scattered_angles(absorption=0.9)
             # print(np.matmul(x, transform3), u)
             # print(np.matmul(u, transform3), x)
             # print(np.matmul(u, transform3.T), x)
@@ -486,7 +485,7 @@ def structure_box(parent):
             # Normal are outward facing
 
             x, y, z = ray.position[0], ray.position[1], ray.position[2]
-            if np.isclose(z, 1) and np.abs(x) < 0.3 and np.abs(y) < 0.3:
+            if np.isclose(z, 2.5) and np.abs(x) < 0.3 and np.abs(y) < 0.3:
                 return super(PartialTopSurfaceMirror, self).reflectivity(surface, ray, geometry, container,
                                                                          adjacent)
             else:
@@ -506,14 +505,14 @@ def structure_box(parent):
     box = pv.Node(
         name="box_1",
         geometry=pv.Box(
-            (2.0, 1.0, 2),
+            (10.0, 10.0, 5),
             # radius=3,
             material=pv.Material(
                 refractive_index=1.05,
                 surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
                 components=[
-                    pv.Absorber(coefficient=0.1),
-                    pv.Scatterer(coefficient=4.)
+                    pv.Absorber(coefficient=absor),
+                    pv.Scatterer(coefficient=scat)
                 ],
 
             ),
@@ -522,7 +521,7 @@ def structure_box(parent):
     )
 
 
-def pv_scene_real(structure=structure_box, light=light_beam):
+def pv_scene_real(structure=structure_box, light=light_beam, absor=1e-10, scat=1e-10):
     """
 
     :param structure:
@@ -536,7 +535,7 @@ def pv_scene_real(structure=structure_box, light=light_beam):
             material=pv.Material(refractive_index=1.0),
         )
     )
-    structure(parent=world)
+    structure(parent=world, absor=absor, scat=scat)
     light(parent=world)
     scene = pv.Scene(world)
     return scene
@@ -754,15 +753,15 @@ if __name__ == '__main__':
     # exit()
     # pv_integrating_sphere()
     # scene = main_create_scene_test()
-    scene = pv_scene_real()
-    positions = cs.scene_render_and_positions(scene, rays_number=60000, show_3d=False)
+    scene = pv_scene_real(absor=0.01, scat=10.)
+    positions = cs.scene_render_and_positions(scene, rays_number=50000, show_3d=False)
     time.sleep(2)
     # exit()
     # UPDATE ALL THE CROSSECTIONS
-    x_res, y_res, z_res = 122, 61, 183
-    xM = -1, 1
-    yM = -0.5, 0.5
-    zM = -1, 2
+    x_res, y_res, z_res = 101, 101, 51
+    xM = -5, 5
+    yM = -5, 5
+    zM = -2.5, 2.5
     dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
                       x_max_min=xM, y_max_min=yM, z_max_min=zM,
                       res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
@@ -786,9 +785,7 @@ if __name__ == '__main__':
     plt.show()
     plt.imshow(dots_3D_sat[:, :, 0].T, cmap='hot', interpolation='bilinear')
     plt.show()
-
-
-    kernel_size = 10
+    kernel_size = 5
     t = 1 - np.abs(np.linspace(-1, 1, kernel_size))
     kernel = t.reshape(kernel_size, 1) * t.reshape(1, kernel_size)
     kernel /= kernel.sum()
