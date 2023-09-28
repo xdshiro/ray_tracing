@@ -77,7 +77,7 @@ def plane_intensity(positions, plane_vec=(3, 2, 1), plane_dot=(1, 2, 3), x_res=2
                 # print((i, j, z))
                 intensity[ind_i, ind_j] = dots_ind_collection[(i, j, z)]
     # mesh = np.meshgrid(np.arange(x_res), np.arange(y_res), indexing='ij')
-    print(intensity)
+    # print(intensity)
     return dots_all_rays, intensity
 
     #         dot1 = dot2
@@ -142,10 +142,13 @@ if __name__ == '__main__':
             exit()
     RZ11 = True
     if RZ11:
-        planes = True
+        planes = False
+        total = 3000
         if planes:
+           
             # with open('Z7_positions_150.pkl', 'rb') as file:
-            with open('..\\holders__5_2__3_8\\RZ11_positions_300000.pkl', 'rb') as file:
+            with open('..\\holders__5_2__3_8\\R'
+                      f'Z11_positions_{total}.pkl', 'rb') as file:
                 positions = pickle.load(file)
 
             # dots, intensity = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, 3.8001),
@@ -158,12 +161,21 @@ if __name__ == '__main__':
                                               positive=True,
                                               )
             plt.imshow(intensity.T, cmap='hot')  # , interpolation='bilinear')
-            print(np.sum(intensity))
+            print(f'Transmission: {np.sum(intensity) / total}')
             plt.show()
-        intensity_dots = False
+            dots, intensity2 = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, 3.8001),
+                                              x_res=51, y_res=51,
+                                              x_max_min=(-2.6, 2.6), y_max_min=(-2.6, 2.6),
+                                              negative=True,  # reflection
+                                              positive=False,
+                                              # negative=False,  # transmission
+                                              # positive=True,
+                                              )
+            print(f'Reflection: {np.sum(intensity2) / total}')
+        intensity_dots = True
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
-            dots_3d = np.load('..\\holders__5_2__3_8\\RZ11_221_300000.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_221_{total}_r0.5.npy')
             reso = 221
             dots_3d = gaussian_filter(dots_3d, sigma=2)
             dots_3d = np.sqrt(dots_3d)

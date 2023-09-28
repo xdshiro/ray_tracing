@@ -31,7 +31,7 @@ from scipy import signal
 
 from pvtrace import SurfaceDelegate
 
-rng = Generator(PCG64(SeedSequence(102)))
+rng = Generator(PCG64(SeedSequence(103)))
 
 d_bottom_hole = 2
 h_bottom_hole = 0.5
@@ -51,7 +51,7 @@ L_A = -length / np.log(TF)  # absorption length
 L = -length / np.log(T)  # attenuation length
 L_S = L * L_A / (L_A - L)  # scattering length
 print(T, R, A, T + R + A, L_S, L_A)
-exit()
+
 
 class PartialTopSurfaceMirror(pv.FresnelSurfaceDelegate):
     """ A section of the top surface is covered with a perfect mirrrors.
@@ -588,8 +588,8 @@ def collimated_beam(r):
     return coords
 
 
+r = 0.5
 def light_beam(parent):
-    r = 0.1
     light = pv.Node(
         name="Light (555nm)",
         # light=pv.Light(direction=functools.partial(pv.cone, np.pi / 128)),
@@ -706,9 +706,9 @@ from scipy.ndimage import uniform_filter
 if __name__ == '__main__':
     print('hi')
     scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S)
-    number_rays = 300000
+    number_rays = 150000
     # number_rays = 1500
-    positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=0)
+    positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=0, random_seed=2)
     x_res, y_res, z_res = 221, 221, 221
     xM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
     yM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
@@ -734,9 +734,9 @@ if __name__ == '__main__':
     # max = np.max(dots_3D_sat) * 0.02
     # dots_3D_sat[dots_3D_sat > max] = max
 
-    np.save(f'RZ11_{x_res}_{number_rays}', dots_3D)
+    np.save(f'RZ11_{x_res}_{number_rays}_r{r}', dots_3D)
     # np.save(f'Z7_positions_{number_rays}', np.array(positions))
-    with open(f'RZ11_positions_{number_rays}.pkl', 'wb') as file:
+    with open(f'RZ11_positions_{number_rays}_r{r}.pkl', 'wb') as file:
         pickle.dump(positions, file)
     plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='hot', interpolation='spline36')
     plt.tight_layout()
