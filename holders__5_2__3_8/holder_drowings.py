@@ -143,7 +143,8 @@ if __name__ == '__main__':
     RZ11 = True
     if RZ11:
         planes = False
-        total = 3000
+        total = 300000
+        r = 0.9
         if planes:
            
             # with open('Z7_positions_150.pkl', 'rb') as file:
@@ -175,7 +176,7 @@ if __name__ == '__main__':
         intensity_dots = True
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
-            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_221_{total}_r0.5.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_221_{total}_r{r}.npy')
             reso = 221
             dots_3d = gaussian_filter(dots_3d, sigma=2)
             dots_3d = np.sqrt(dots_3d)

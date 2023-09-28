@@ -49,7 +49,10 @@ def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browse
         vis = pv.MeshcatRenderer(wireframe=True, open_browser=open_browser)
         vis.render(scene)
     for rays in scene.emit(rays_number):
-        steps = pv.photon_tracer.follow(scene, rays)
+        try:
+            steps = pv.photon_tracer.follow(scene, rays)
+        except ValueError:
+            continue
         path, decisions = zip(*steps)
         positions_ray = []
         for ray in path:
