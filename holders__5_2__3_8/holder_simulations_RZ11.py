@@ -588,7 +588,7 @@ def collimated_beam(r):
     return coords
 
 
-r = 0.9
+r = 0.25
 def light_beam(parent):
     light = pv.Node(
         name="Light (555nm)",
@@ -706,9 +706,10 @@ from scipy.ndimage import uniform_filter
 if __name__ == '__main__':
     print('hi')
     scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S)
-    number_rays = 300000
+    number_rays = 3000
     # number_rays = 1500
-    positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=0, random_seed=2)
+    positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=1, random_seed=2)
+    exit()
     x_res, y_res, z_res = 221, 221, 221
     xM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
     yM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1

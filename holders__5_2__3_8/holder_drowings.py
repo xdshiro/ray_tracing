@@ -178,7 +178,7 @@ if __name__ == '__main__':
             # dots_3d = np.load('Z7_221_150.npy')
             dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_221_{total}_r{r}.npy')
             reso = 221
-            dots_3d = gaussian_filter(dots_3d, sigma=2)
+            dots_3d = gaussian_filter(dots_3d, sigma=3)
             dots_3d = np.sqrt(dots_3d)
             max_int = dots_3d.max()
             plt.figure(figsize=(5, 5), dpi=100)
