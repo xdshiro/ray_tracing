@@ -32,7 +32,7 @@ logging.getLogger('matplotlib').setLevel(logging.CRITICAL)
 
 
 
-def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browser=True, show_3d=True):
+def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browser=True, show_3d=True,):
     """
     The main purpose of this function is to propagate rays and return all there trajectories, as
     arrays of all dots they have "visited".
@@ -48,10 +48,19 @@ def scene_render_and_positions(scene, rays_number=50, random_seed=0, open_browse
     if show_3d:
         vis = pv.MeshcatRenderer(wireframe=True, open_browser=open_browser)
         vis.render(scene)
+    i = 1
     for rays in scene.emit(rays_number):
         try:
             steps = pv.photon_tracer.follow(scene, rays)
         except ValueError:
+            continue
+        except numpy.linalg.LinAlgError:
+            print(f"skipped {i}")
+            i += 1
+            continue
+        except pv.common.errors.GeometryError:
+            print(f"skipped {i} (geometry error)")
+            i += 1
             continue
         path, decisions = zip(*steps)
         positions_ray = []

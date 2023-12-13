@@ -4,6 +4,7 @@ from scipy.ndimage import gaussian_filter
 import pickle
 import collections
 
+
 def plane_intensity(positions, plane_vec=(3, 2, 1), plane_dot=(1, 2, 3), x_res=21, y_res=21,
                     x_max_min=(-1, 1), y_max_min=(-1, 1), positive=True, negative=True):
     """
@@ -99,7 +100,7 @@ if __name__ == '__main__':
                 positions = pickle.load(file)
 
             dots, intensity = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, 3.8001),
-            # dots, intensity = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, -0.5001),
+                                              # dots, intensity = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, -0.5001),
                                               x_res=51, y_res=51,
                                               x_max_min=(-2.6, 2.6), y_max_min=(-2.6, 2.6),
                                               negative=True,
@@ -144,12 +145,15 @@ if __name__ == '__main__':
     if RZ11:
         planes = False
         total = 300000
-        r = 0.9
+        total = 150000
+        r = 0.8
+        focus = 0.95
+        name = '15n14even'
+        # max_int = 15
         if planes:
-           
             # with open('Z7_positions_150.pkl', 'rb') as file:
             with open('..\\holders__5_2__3_8\\R'
-                      f'Z11_positions_{total}.pkl', 'rb') as file:
+                      f'Z11_positions_{total}_r{r}_{name}.pkl', 'rb') as file:
                 positions = pickle.load(file)
 
             # dots, intensity = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, 3.8001),
@@ -158,48 +162,52 @@ if __name__ == '__main__':
                                               x_max_min=(-2.6, 2.6), y_max_min=(-2.6, 2.6),
                                               # negative=True,
                                               # positive=False,
-                                              negative=False, # transmission
+                                              negative=False,  # transmission
                                               positive=True,
                                               )
             plt.imshow(intensity.T, cmap='hot')  # , interpolation='bilinear')
             print(f'Transmission: {np.sum(intensity) / total}')
             plt.show()
             dots, intensity2 = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, 3.8001),
-                                              x_res=51, y_res=51,
-                                              x_max_min=(-2.6, 2.6), y_max_min=(-2.6, 2.6),
-                                              negative=True,  # reflection
-                                              positive=False,
-                                              # negative=False,  # transmission
-                                              # positive=True,
-                                              )
+                                               x_res=51, y_res=51,
+                                               x_max_min=(-2.6, 2.6), y_max_min=(-2.6, 2.6),
+                                               negative=True,  # reflection
+                                               positive=False,
+                                               # negative=False,  # transmission
+                                               # positive=True,
+                                               )
             print(f'Reflection: {np.sum(intensity2) / total}')
         intensity_dots = True
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
-            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_221_{total}_r{r}.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_foc_{focus}_221_{total}_r{r}_{name}.npy')
             reso = 221
             dots_3d = gaussian_filter(dots_3d, sigma=3)
             dots_3d = np.sqrt(dots_3d)
             max_int = dots_3d.max()
-            plt.figure(figsize=(5, 5), dpi=100)
+            plt.figure(figsize=(6, 5), dpi=100)
             plt.imshow(dots_3d[:, :, -1].T, cmap=cmap, interpolation='spline36',
                        vmin=0, vmax=max_int)
             plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
+            plt.colorbar()
             plt.show()
-            plt.figure(figsize=(5, 5), dpi=100)
+            plt.figure(figsize=(6, 5), dpi=100)
             plt.imshow(dots_3d[:, :, reso // 2].T, cmap=cmap, interpolation='spline36',
                        vmin=0, vmax=max_int)
             plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
+            plt.colorbar()
             plt.show()
-            plt.figure(figsize=(5, 5), dpi=100)
+            plt.figure(figsize=(6, 5), dpi=100)
             plt.imshow(dots_3d[:, :, 0].T, cmap=cmap, interpolation='spline36',
                        vmin=0, vmax=max_int)
             plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
+            plt.colorbar()
             plt.show()
             # exit()
-            plt.figure(figsize=(5, 5), dpi=100)
+            plt.figure(figsize=(6, 5), dpi=100)
             plt.imshow(dots_3d[:, 4 * reso // 8, ::-1].T, cmap=cmap, interpolation='spline36',
                        vmin=0, vmax=max_int)
             plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
+            plt.colorbar()
             plt.show()
             exit()

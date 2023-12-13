@@ -28,6 +28,7 @@ import my_functions.beams_and_pulses as bp
 from dataclasses import replace
 from numpy.random import Generator, PCG64, SeedSequence
 from scipy import signal
+from pvtrace.geometry.cylinder import CylinderRough
 
 from pvtrace import SurfaceDelegate
 
@@ -280,6 +281,11 @@ class PartialTopSurfaceMirror(pv.FresnelSurfaceDelegate):
         if geometry.radius == d_holder / 2 and geometry.length == h_holder:  # real holder
             # print(z, h_holder)
             if np.isclose(z, h_holder / 2) and np.sqrt(x ** 2 + y ** 2) < d_holder / 2:
+                # print(surface, ray, geometry, container, adjacent)
+                # print(geometry)
+                # print(geometry.normal(ray.position))
+                # exit()
+
                 return super(PartialTopSurfaceMirror, self).reflectivity(surface, ray, geometry, container,
                                                                          adjacent)
             elif np.isclose(z, -h_holder / 2) and np.sqrt(x ** 2 + y ** 2) < d_bottom_hole / 2:
@@ -403,67 +409,7 @@ def main_create_scene_test():
                                  )
         )
     )
-    # pv.Node(
-    #     name="sphere1 (glass)",
-    #     geometry=pv.Sphere(
-    #         radius=0.8,
-    #         material=pv.Material(
-    #             refractive_index=1.0,
-    #
-    #         ),
-    #     ),
-    #     parent=world
-    # )
-    # sphere2 = pv.Node(
-    #     name="sphere2 (glass)",
-    #     geometry=pv.Sphere(
-    #         radius=0.35,
-    #         material=pv.Material(
-    #             refractive_index=1.0,
-    #             components=[
-    #                 pv.Scatterer(coefficient=3.1)
-    #             ]
-    #         ),
-    #     ),
-    #     parent=world
-    # )
-    # sphere2.translate((0, 0.3, 0.3))
-    # sphere3 = pv.Node(
-    #     name="sphere3 (glass)",
-    #     geometry=pv.Sphere(
-    #         radius=0.3,
-    #         material=pv.Material(
-    #             refractive_index=1.0,
-    #             components=[
-    #                 pv.Scatterer(coefficient=3.1)
-    #             ]
-    #         ),
-    #     ),
-    #     parent=world
-    # )
-    #
-    # sphere3.translate((0, -0.2, -0.2))
 
-    # box = pv.Node(
-    #     name="cyl1 (glass)",
-    #     geometry=pv.Box(
-    #         (1.0, 1.0, 2),
-    #         material=pv.Material(
-    #             refractive_index=1.05,
-    #             surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
-    #             components=[
-    #                 pv.Absorber(coefficient=1.1),
-    #                 pv.Scatterer(coefficient=0.181)
-    #             ]
-    #
-    #         ),
-    #     ),
-    #     parent=world
-    # )
-    # cylinder1.rotate(np.pi/2, [0, 1, 0])
-
-    # cylinder1.translate((0.5, -0.3, 0.2))
-    # cylinder1.rotate(np.pi/5, [1, 0, 0])
     import functools
     light = pv.Node(
         name="Light (555nm)",
@@ -482,11 +428,12 @@ def main_create_scene_test():
 def structure_sample(parent, absor=1, scat=1):
     cylinder1 = pv.Node(
         name="holder",
-        geometry=pv.Cylinder(
+        geometry=CylinderRough(
             radius=d_holder / 2,
             length=h_holder,
             material=pv.Material(
-                refractive_index=1.05,
+                # refractive_index=1.0,
+                refractive_index=1.1,
                 surface=pv.Surface(delegate=PartialTopSurfaceMirror()),
                 components=[
                     pv.Absorber(coefficient=absor),
@@ -588,21 +535,60 @@ def collimated_beam(r):
     return coords
 
 
-r = 0.25
-def light_beam(parent):
+random_counter = 0
+random_seed = 0
+r = 0.8
+def positions_directions(focus):
+    # Create the vector from (x, y, 0) to (0, 0, z0)
+    global random_counter, random_seed, r
+    if random_counter % 2 == 0:
+        random_seed += 1
+    rng = np.random.default_rng(random_seed)
+    r = r
+    z0 = focus
+    x, y = rng.multivariate_normal((0, 0), [[r ** 2, 0], [0, r ** 2]], 1)[0]
+    coordinates = x, y, 0
+    z0 += 0.2 * np.random.uniform(-1, 1)
+    v = np.array([-x, -y, z0])
+
+    # Normalize the vector
+    v_norm = v / np.linalg.norm(v)
+    random_counter += 1
+    return coordinates, v_norm
+
+def position(focus):
+    coordinates, _ = positions_directions(focus)
+    # print(coordinates)
+    return coordinates
+
+
+def direction(focus):
+    _, angles = positions_directions(focus)
+    # print(angles)
+    return angles
+
+
+def light_beam(parent, focus):
     light = pv.Node(
         name="Light (555nm)",
-        # light=pv.Light(direction=functools.partial(pv.cone, np.pi / 128)),
-        light=pv.Light(position=functools.partial(collimated_beam, r),
-                       wavelength=lambda: 555
-                       ),
+
+        light=pv.Light(
+            # direction=functools.partial(pv.cone, np.pi / 128)),
+            direction=functools.partial(direction, focus),
+            # direction=functools.partial(focused_beam, np.pi / 5, -5),
+            position=functools.partial(position, focus),
+            # position=functools.partial(collimated_beam, r=0.5),
+            wavelength=lambda: 555
+        ),
         parent=parent,
     )
-    light.translate([0, 0, 9.5])
+    # light.translate([0, 0, 9.5])
+    light.translate([0, 0, 1.25 * h_holder])
     light.rotate(np.pi, [1, 0, 0])
 
 
-def pv_scene_real(structure=structure_sample, light=light_beam, absor=1e-10, scat=1e-10):
+def pv_scene_real(structure=structure_sample, light=light_beam, absor=1e-10, scat=1e-10,
+                  focus=1e9):
     """
 
     :param structure:
@@ -618,7 +604,7 @@ def pv_scene_real(structure=structure_sample, light=light_beam, absor=1e-10, sca
     )
 
     structure(parent=world, absor=absor, scat=scat)
-    light(parent=world)
+    light(parent=world, focus=focus)
     scene = pv.Scene(world)
     return scene
 
@@ -704,96 +690,108 @@ def plane_intensity(positions, plane_vec=(3, 2, 1), plane_dot=(1, 2, 3), x_res=2
 from scipy.ndimage import uniform_filter
 
 if __name__ == '__main__':
-    print('hi')
-    scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S)
-    number_rays = 3000
-    # number_rays = 1500
-    positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=1, random_seed=2)
-    exit()
-    x_res, y_res, z_res = 221, 221, 221
-    xM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
-    yM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
-    zM = -h_bottom_hole * 1.000001, h_holder * 1.000001
-    dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
-                      x_max_min=xM, y_max_min=yM, z_max_min=zM,
-                      res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
-    # print(len(dots))
-    dots_3D = array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=xM, y_max_min=yM, z_max_min=zM)
+    # z0 = 9.5 - h_holder / 2  # mid
+    # z0 = 9.5 - h_holder  # top
+    # for focus in [
+    #     9.5 - 2 * h_holder, 9.5 - 1.5 * h_holder, 9.5 - 1 * h_holder,
+    #     9.5 - 0.5 * h_holder, 9.5 - 0 * h_holder,
+    #     9.5 + 0.5 * h_holder, 9.5 + 1 * h_holder,
+    #     1e9
+    # ]:
+    for focus in [
+        0.25 * h_holder,
 
-    # dots_3D_avg = array_3D_intensity_from_dots_avg(dots_3D)
-    # exit()
-    # plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
-    # plt.show()
-    # plt.imshow(dots_3D_avg[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
-    # plt.show()
-    # dots_3D_sat = np.array(dots_3D_avg)
-    # max = np.max(dots_3D_sat) * 0.5
-    # dots_3D_sat[dots_3D_sat > max] = max
-    # plt.imshow(dots_3D_sat[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
-    # plt.show()
-    # dots_3D_sat = np.array(dots_3D_avg)
-    # max = np.max(dots_3D_sat) * 0.02
-    # dots_3D_sat[dots_3D_sat > max] = max
+    ]:
+        # print('hi')
+        scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S, focus=focus)
+        number_rays = 150000
+        # number_rays = 1500
+        positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=0, random_seed=2,)
+        # exit()
+        x_res, y_res, z_res = 221, 221, 221
+        xM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
+        yM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
+        zM = -h_bottom_hole * 1.000001, h_holder * 1.000001
+        dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
+                          x_max_min=xM, y_max_min=yM, z_max_min=zM,
+                          res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
+        # print(len(dots))
+        dots_3D = array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=xM, y_max_min=yM, z_max_min=zM)
 
-    np.save(f'RZ11_{x_res}_{number_rays}_r{r}', dots_3D)
-    # np.save(f'Z7_positions_{number_rays}', np.array(positions))
-    with open(f'RZ11_positions_{number_rays}_r{r}.pkl', 'wb') as file:
-        pickle.dump(positions, file)
-    plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
-    plt.imshow(dots_3D[:, :, -1].T, cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
-    plt.imshow(dots_3D[:, :, z_res // 2].T, cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
-    plt.imshow(dots_3D[:, :, 0].T, cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
-    plt.imshow(gaussian_filter(dots_3D[:, y_res // 2, :].T, sigma=4), cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
-    plt.imshow(gaussian_filter(dots_3D[:, :, -1].T, sigma=4), cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
-    plt.imshow(gaussian_filter(dots_3D[:, :, z_res // 2].T, sigma=4), cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
-    plt.imshow(gaussian_filter(dots_3D[:, :, 0].T, sigma=4), cmap='hot', interpolation='spline36')
-    plt.tight_layout()
-    plt.show()
+        # dots_3D_avg = array_3D_intensity_from_dots_avg(dots_3D)
+        # exit()
+        # plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+        # plt.show()
+        # plt.imshow(dots_3D_avg[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+        # plt.show()
+        # dots_3D_sat = np.array(dots_3D_avg)
+        # max = np.max(dots_3D_sat) * 0.5
+        # dots_3D_sat[dots_3D_sat > max] = max
+        # plt.imshow(dots_3D_sat[:, y_res // 2, :].T, cmap='nipy_spectral', interpolation='bilinear')
+        # plt.show()
+        # dots_3D_sat = np.array(dots_3D_avg)
+        # max = np.max(dots_3D_sat) * 0.02ё
+        # dots_3D_sat[dots_3D_sat > max] = max
 
-    exit()
+        np.save(f'RZ11_foc_{focus}_{x_res}_{number_rays}_r{r}_15n14even', dots_3D)
+        # np.save(f'Z7_positions_{number_rays}', np.array(positions))
+        with open(f'RZ11_foc_{focus}_positions_{number_rays}_r{r}_15n14even.pkl', 'wb') as file:
+            pickle.dump(positions, file)
+        plt.imshow(dots_3D[:, y_res // 2, :].T, cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
+        plt.imshow(dots_3D[:, :, -1].T, cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
+        plt.imshow(dots_3D[:, :, z_res // 2].T, cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
+        plt.imshow(dots_3D[:, :, 0].T, cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
+        plt.imshow(gaussian_filter(dots_3D[:, y_res // 2, :].T, sigma=4), cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
+        plt.imshow(gaussian_filter(dots_3D[:, :, -1].T, sigma=4), cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
+        plt.imshow(gaussian_filter(dots_3D[:, :, z_res // 2].T, sigma=4), cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
+        plt.imshow(gaussian_filter(dots_3D[:, :, 0].T, sigma=4), cmap='hot', interpolation='spline36')
+        plt.tight_layout()
+        plt.show()
 
-    dots, intensity = plane_intensity(positions, plane_vec=(0, 0, 1), plane_dot=(0, 0, 1.0001),
-                                      # dots, intensity = plane_intensity(positions, plane_vec=(1, 0, 0.1), plane_dot=(0, 0, 0),
-                                      x_res=51, y_res=51,
-                                      x_max_min=(-1, 1), y_max_min=(-1, 1)
-                                      )
-
-    # exit()
-    x_coordinates = [point[0] for point in dots]
-    y_coordinates = [point[1] for point in dots]
-    # plt.scatter(x_coordinates, y_coordinates, color='blue', marker='o')
-    # plt.xlim(-1, 1)
-    # plt.ylim(-1, 1)
-    # plt.show()
-    plt.imshow(intensity.T, cmap='hot')  # , interpolation='bilinear')
-    plt.show()
-    plt.imshow(gaussian_filter(intensity.T, sigma=1), cmap='hot')  # , interpolation='bilinear')
-    plt.show()
-    # plt.imshow(gaussian_filter(intensity.T, sigma=4), cmap='Blues')#, interpolation='bilinear')
-    # plt.show()
-    # plt.imshow(uniform_filter(intensity.T, size=5), cmap='Blues')  # , interpolation='bilinear')
-    # plt.show()
-    # plt.imshow(uniform_filter(intensity.T, size=7), cmap='Blues')  # , interpolation='bilinear')
-    # plt.show()
-    time.sleep(2)
-    x_res, y_res, z_res = 101, 101, 51
-    xM = -5, 5
-    yM = -5, 5
-    zM = -2.5, 2.5
-    # dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
-    #                   x_max_min=xM, y_max_min=yM, z_max_min=zM,
-    #                   res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
+        #
+        #
+        # dots, intensity = plane_intensity(positions, plane_vec=(0, 0, 1), plane_dot=(0, 0, 1.0001),
+        #                                   # dots, intensity = plane_intensity(positions, plane_vec=(1, 0, 0.1), plane_dot=(0, 0, 0),
+        #                                   x_res=51, y_res=51,
+        #                                   x_max_min=(-1, 1), y_max_min=(-1, 1)
+        #                                   )
+        #
+        # # exit()
+        # x_coordinates = [point[0] for point in dots]
+        # y_coordinates = [point[1] for point in dots]
+        # # plt.scatter(x_coordinates, y_coordinates, color='blue', marker='o')
+        # # plt.xlim(-1, 1)
+        # # plt.ylim(-1, 1)
+        # # plt.show()
+        # plt.imshow(intensity.T, cmap='hot')  # , interpolation='bilinear')
+        # plt.show()
+        # plt.imshow(gaussian_filter(intensity.T, sigma=1), cmap='hot')  # , interpolation='bilinear')
+        # plt.show()
+        # # plt.imshow(gaussian_filter(intensity.T, sigma=4), cmap='Blues')#, interpolation='bilinear')
+        # # plt.show()
+        # # plt.imshow(uniform_filter(intensity.T, size=5), cmap='Blues')  # , interpolation='bilinear')
+        # # plt.show()
+        # # plt.imshow(uniform_filter(intensity.T, size=7), cmap='Blues')  # , interpolation='bilinear')
+        # # plt.show()
+        # time.sleep(2)
+        # x_res, y_res, z_res = 101, 101, 51
+        # xM = -5, 5
+        # yM = -5, 5
+        # zM = -2.5, 2.5
+        # # dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
+        # #                   x_max_min=xM, y_max_min=yM, z_max_min=zM,
+        # #                   res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
