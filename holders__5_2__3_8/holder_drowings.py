@@ -145,9 +145,11 @@ if __name__ == '__main__':
     if RZ11:
         planes = False
         total = 300000
-        total = 150000
-        r = 0.8
-        focus = 0.95
+        total = 15000
+        r = 7.5
+        focus = 7.6
+        r_foc = 1.3
+        dist = 11.4
         name = '15n14even'
         # max_int = 15
         if planes:
@@ -180,7 +182,7 @@ if __name__ == '__main__':
         intensity_dots = True
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
-            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_foc_{focus}_221_{total}_r{r}_{name}.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_dist_{dist}_foc_{focus}_rfoc_{r_foc}_221_{total}_r{r}_{name}.npy')
             reso = 221
             dots_3d = gaussian_filter(dots_3d, sigma=3)
             dots_3d = np.sqrt(dots_3d)
