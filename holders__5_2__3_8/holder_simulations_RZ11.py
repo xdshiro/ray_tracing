@@ -59,7 +59,6 @@ class PartialTopSurfaceMirror(pv.FresnelSurfaceDelegate):
 
 		All other surface obey the Fresnel equations.
 	"""
-	
 	# print(super(PartialTopSurfaceMirror, self).reflected_direction(surface, ray, geometry, container,
 	#                                                                adjacent))
 	# Xn0 = np.array((0, 0, -1))
@@ -82,6 +81,7 @@ class PartialTopSurfaceMirror(pv.FresnelSurfaceDelegate):
 	# R1 = np.array([Xp0, Xn0, Xc0])
 	# R2 = np.array([Xp, Xn, Xc])
 	# transform2 = np.matmul(R1, R2.T)
+
 	def reflected_direction_random_not_finished(self, surface, ray, geometry, container, adjacent):
 		"""
 		Implementation of the scattering surface. We can control the scattering angles in scattered_angles.
@@ -539,7 +539,7 @@ random_counter = 0
 random_seed = 0
 r = 10
 r = 7.5
-r_foc = d_holder / 4
+r_foc = d_holder / 6
 dist = h_holder * 3
 # r_foc = 2.5
 
@@ -715,16 +715,16 @@ if __name__ == '__main__':
 		# print('hi')
 		scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S, focus=focus)
 		number_rays = 200000
-		# number_rays = 1500
-		positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=0, random_seed=2, )
-		
+		number_rays =1000
+		positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=1, random_seed=2, )
+		continue
 		x_res, y_res, z_res = 221, 221, 221
 		xM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
 		yM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
 		zM = -h_bottom_hole * 1.000001, h_holder * 1.000001
 		dots = lines_dots(positions, x_res=x_res, y_res=y_res, z_res=z_res,
-		                  x_max_min=xM, y_max_min=yM, z_max_min=zM,
-		                  res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
+			  x_max_min=xM, y_max_min=yM, z_max_min=zM,
+			  res_line=int(np.sqrt(x_res ** 2 + y_res ** 2 + z_res ** 2)), length_line=1)
 		# print(len(dots))
 		dots_3D = array_3D_intensity_from_dots(dots, x_res, y_res, z_res, x_max_min=xM, y_max_min=yM, z_max_min=zM)
 		

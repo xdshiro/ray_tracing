@@ -144,8 +144,8 @@ if __name__ == '__main__':
     RZ11 = True
     if RZ11:
         planes = False
-        total = 300000
-        total = 15000
+        total = 200000
+        # total = 15000
         r = 7.5
         focus = 7.6
         r_foc = 1.3
