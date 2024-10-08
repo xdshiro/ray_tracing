@@ -154,8 +154,10 @@ if __name__ == '__main__':
         # max_int = 15
         if planes:
             # with open('Z7_positions_150.pkl', 'rb') as file:
-            with open('..\\holders__5_2__3_8\\R'
-                      f'Z11_positions_{total}_r{r}_{name}.pkl', 'rb') as file:
+            # with open('..\\holders__5_2__3_8\\R'
+            #           f'Z11_positions_{total}_r{r}_{name}.pkl', 'rb') as file:
+            with open('..\\holders__5_2__3_8\\RZ11_dist_13.23_foc_1.0_rfoc_0.0_221_1000_r0.6521739130434783_15n14even.pkl', 'rb') as file:
+
                 positions = pickle.load(file)
 
             # dots, intensity = plane_intensity(positions, plane_vec=(0, 0, -1), plane_dot=(0, 0, 3.8001),
@@ -183,6 +185,7 @@ if __name__ == '__main__':
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
             dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_dist_{dist}_foc_{focus}_rfoc_{r_foc}_221_{total}_r{r}_{name}.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\RZ11_dist_13.23_foc_1.0_rfoc_0.0_221_2700000_r0.6521739130434783_15n14even.npy')
             reso = 221
             dots_3d = gaussian_filter(dots_3d, sigma=3)
             dots_3d = np.sqrt(dots_3d)
@@ -211,5 +214,6 @@ if __name__ == '__main__':
                        vmin=0, vmax=max_int)
             plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
             plt.colorbar()
+            plt.xlim(6, 215)
             plt.show()
             exit()

@@ -51,9 +51,29 @@ length = h_holder  # in m
 L_A = -length / np.log(TF)  # absorption length
 L = -length / np.log(T)  # attenuation length
 L_S = L * L_A / (L_A - L)  # scattering length
-print(T, R, A, T + R + A, L_S, L_A)
+# print(T, R, A, T + R + A, L_S, L_A)
 
 
+random_counter = 0
+random_seed = 0
+r = 10
+r = 7.5
+r_foc = d_holder / 6
+dist = h_holder * 3
+
+
+random_counter = 0
+random_seed = 0
+r = 10
+r = 30 / 23 / 2
+r_foc = 1e-3
+dist = h_holder + 23. / 6 + 1
+dist = h_holder + 4.6+23 / 6 + 1
+
+
+focuses = [-h_holder - 4.6 - 23 / 6]
+# focuses = [0]
+# exit()
 class PartialTopSurfaceMirror(pv.FresnelSurfaceDelegate):
 	""" A section of the top surface is covered with a perfect mirrrors.
 
@@ -403,7 +423,7 @@ def main_create_scene_test():
 	world = pv.Node(
 		name="world (air)",
 		geometry=pv.Sphere(
-			radius=4,
+			radius=6,
 			material=pv.Material(refractive_index=1.0,
 			
 			                     )
@@ -415,7 +435,7 @@ def main_create_scene_test():
 		name="Light (555nm)",
 		# light=pv.Light(direction=functools.partial(pv.cone, np.pi / 32)),
 		light=pv.Light(position=functools.partial(collimated_beam, 0.1),
-		               wavelength=lambda: 555
+		               wavelength=lambda: 455
 		               ),
 		parent=world
 	)
@@ -535,12 +555,6 @@ def collimated_beam(r):
 	return coords
 
 
-random_counter = 0
-random_seed = 0
-r = 10
-r = 7.5
-r_foc = d_holder / 6
-dist = h_holder * 3
 # r_foc = 2.5
 
 def positions_directions(focus):
@@ -707,15 +721,16 @@ if __name__ == '__main__':
 	#     9.5 + 0.5 * h_holder, 9.5 + 1 * h_holder,
 	#     1e9
 	# ]:
-	for focus in [
-		- 1 * h_holder, - 0.5 * h_holder, - 0 * h_holder
-	
-	]:
+	# for focus in [
+	# 	- 1 * h_holder, - 0.5 * h_holder, - 0 * h_holder
+	#
+	# ]:
+	for focus in focuses:
 		focus += dist
 		# print('hi')
 		scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S, focus=focus)
-		number_rays = 200000
-		number_rays =1000
+		number_rays = 2700000
+		number_rays =100
 		positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=1, random_seed=2, )
 		continue
 		x_res, y_res, z_res = 221, 221, 221
@@ -745,6 +760,7 @@ if __name__ == '__main__':
 		
 		np.save(f'RZ11_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_{x_res}_{number_rays}_r{r}_15n14even', dots_3D)
 		# np.save(f'Z7_positions_{number_rays}', np.array(positions))
+		print(f'RZ11_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_{x_res}_{number_rays}_r{r}_15n14even')
 		with open(f'RZ11_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_positions_{number_rays}_r{r}_15n14even.pkl', 'wb') as file:
 			pickle.dump(positions, file)
 		
