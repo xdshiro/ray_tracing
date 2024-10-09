@@ -217,3 +217,4 @@ if __name__ == '__main__':
             plt.xlim(6, 215)
             plt.show()
             exit()
+            exit()
