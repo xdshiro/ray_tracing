@@ -36,8 +36,9 @@ rng = Generator(PCG64(SeedSequence(103)))
 
 d_bottom_hole = 2
 h_bottom_hole = 0.5
-d_holder = 5.2
+d_holder = 4.2
 h_holder = 4.3 - h_bottom_hole
+h_holder = 2.5
 
 total = 3.96
 T = 0.27 / total
@@ -45,6 +46,20 @@ T_dir = 0.18 / total
 R = 0.5 / total
 A = 1 - T - R
 
+
+# # RZ13
+# total = 5.42
+# T = 0.02 / total
+# T_dir = 0.01 / total
+# R = 0.2 / total
+# A = 1 - T - R
+#
+# # Z7
+# total = 8.41
+# T = 5.54 / total
+# T_dir = (3.62 - 0.03) / total
+# R = (1.61 - 0.03) / total
+# A = 1 - T - R
 # print(np.arctan(3./4.6)/np.pi)
 # exit()
 assert R + T + A == 1, 'WRONG T, R, A'
@@ -749,14 +764,18 @@ if __name__ == '__main__':
 	#
 	# ]:
 	for focus in focuses:
+
 		focus += dist
 		# print('hi')
 		scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S, focus=focus)
-		number_rays = 27000
-		# number_rays =100
-		positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=0, random_seed=2, )
+		number_rays = 3000000
+		number_rays =4000000
 		# continue
 		x_res, y_res, z_res = 221, 221, 221
+		print(
+			f'RZ11_2_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_{x_res}_{number_rays}_r{r}_15n14even')
+		positions = cs.scene_render_and_positions(scene, rays_number=number_rays, show_3d=0, random_seed=2, )
+		# exit()
 		xM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
 		yM = -d_holder / 2 - 0.1, d_holder / 2 + 0.1
 		zM = -h_bottom_hole * 1.000001, h_holder * 1.000001
@@ -782,13 +801,13 @@ if __name__ == '__main__':
 		# dots_3D_sat[dots_3D_sat > max] = max
 		
 		np.save(
-			f'RZ11_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_{x_res}_{number_rays}_r{r}_15n14even',
+			f'RZ11_2_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_{x_res}_{number_rays}_r{r}_15n14even',
 			dots_3D)
 		# np.save(f'Z7_positions_{number_rays}', np.array(positions))
 		print(
-			f'RZ11_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_{x_res}_{number_rays}_r{r}_15n14even')
+			f'RZ11_2_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_{x_res}_{number_rays}_r{r}_15n14even')
 		with open(
-				f'RZ11_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_positions_{number_rays}_r{r}_15n14even.pkl',
+				f'RZ11_2_dist_{round(dist, 2)}_foc_{round(focus, 2)}_rfoc_{round(r_foc, 2)}_positions_{number_rays}_r{r}_15n14even.pkl',
 				'wb') as file:
 			pickle.dump(positions, file)
 		

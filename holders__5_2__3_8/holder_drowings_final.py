@@ -156,7 +156,7 @@ if __name__ == '__main__':
             # with open('Z7_positions_150.pkl', 'rb') as file:
             # with open('..\\holders__5_2__3_8\\R'
             #           f'Z11_positions_{total}_r{r}_{name}.pkl', 'rb') as file:
-            with open('..\\holders__5_2__3_8\\RZ11_dist_13.23_foc_1.0_rfoc_0.0_221_1000_r0.6521739130434783_15n14even.pkl', 'rb') as file:
+            with open('..\\holders__5_2__3_8\\RZ11_2_dist_7.1_foc_4.6_rfoc_0.0_221_3000_r2.5_15n14even.pkl', 'rb') as file:
 
                 positions = pickle.load(file)
 
@@ -184,37 +184,92 @@ if __name__ == '__main__':
         intensity_dots = True
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
-            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_dist_{dist}_foc_{focus}_rfoc_{r_foc}_221_{total}_r{r}_{name}.npy')
-            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_dist_8.4_foc_4.6_rfoc_0.0_221_3000000_r2.5_15n14even.npy')
+            # dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ13_dist_{dist}_foc_{focus}_rfoc_{r_foc}_221_{total}_r{r}_{name}.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\\Z7_2_dist_7.1_foc_4.6_rfoc_0.0_221_2000000_r2.5_15n14even.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\\abs_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
+            # dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
+            # dots_3d = np.load(f'..\\holders__5_2__3_8\\ RZ13_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
             reso = 221
-            dots_3d = gaussian_filter(dots_3d, sigma=3)
-            dots_3d = np.sqrt(dots_3d)
+            dots_3d = gaussian_filter(dots_3d, sigma=2)
+            # dots_3d = np.sqrt(dots_3d * 2)
+            dots_3d = dots_3d
             max_int = dots_3d.max()
-            plt.figure(figsize=(6, 5), dpi=100)
-            plt.imshow(dots_3d[:, :, -1].T, cmap=cmap, interpolation='spline36',
-                       vmin=0, vmax=max_int)
-            plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
-            plt.colorbar()
+
+            # Define real-world dimensions
+            x_min, x_max = -2.23, 2.23  # in mm for X axis
+            y_min, y_max = -2.23, 2.23  # in mm for Y axis in XY cross-sections
+            z_min, z_max = -0.05, 2.5+0.5  # in mm for Z axis in XZ cross-section
+
+            # # Plot the last XY layer
+            # plt.figure(figsize=(6, 5), dpi=100)
+            # plt.imshow(dots_3d[:, :, -1].T, cmap=cmap, interpolation='spline36', vmin=0, vmax=max_int,
+            #            extent=(x_min, x_max, y_min, y_max))
+            # plt.colorbar()
+            # plt.title('XY Cross-Section at End Layer', fontsize=14)
+            # plt.xlabel('X Axis (mm)', fontsize=12)
+            # plt.ylabel('Y Axis (mm)', fontsize=12)
+            # plt.gca().set_aspect('equal')
+            # plt.tight_layout(pad=0.1)
+            # plt.show()
+            #
+            # # Plot the middle XY layer
+            # plt.figure(figsize=(6, 5), dpi=100)
+            # plt.imshow(dots_3d[:, :, reso // 2].T, cmap=cmap, interpolation='spline36', vmin=0, vmax=max_int,
+            #            extent=(x_min, x_max, y_min, y_max))
+            # plt.colorbar()
+            # plt.title('XY Cross-Section at Middle Layer', fontsize=14)
+            # plt.xlabel('X Axis (mm)', fontsize=12)
+            # plt.ylabel('Y Axis (mm)', fontsize=12)
+            # plt.gca().set_aspect('equal')
+            # plt.tight_layout(pad=0.1)
+            # plt.show()
+            #
+            # # Plot the first XY layer
+            # plt.figure(figsize=(6, 5), dpi=100)
+            # plt.imshow(dots_3d[:, :, 0].T, cmap=cmap, interpolation='spline36', vmin=0, vmax=max_int,
+            #            extent=(x_min, x_max, y_min, y_max))
+            # plt.colorbar()
+            # plt.title('XY Cross-Section at Start Layer', fontsize=14)
+            # plt.xlabel('X Axis (mm)', fontsize=12)
+            # plt.ylabel('Y Axis (mm)', fontsize=12)
+            # plt.gca().set_aspect('equal')
+            # plt.tight_layout(pad=0.1)
+            # plt.show()
+
+            # Plot the XZ cross-section
+            plt.figure(figsize=(7, 5), dpi=200)
+            im = plt.imshow(
+                dots_3d[:, 4 * reso // 8, ::].T,
+                cmap=cmap,
+                interpolation='spline36',
+                vmin=0,
+                vmax=max_int,
+                extent=(x_min, x_max, z_min, z_max)
+            )
+
+            # Improved colorbar with larger font for min and max labels
+            cbar = plt.colorbar(im, fraction=0.031, pad=0.01)
+            cbar.set_ticks([0, max_int])  # Show only min and max values
+            # cbar.set_ticklabels(['Min', 'Max'])  # Label as "Min" and "Max"
+            cbar.ax.tick_params(labelsize=14)  # Increase font size for Min/Max labels
+            # cbar.set_label('Intensity', fontsize=14)
+
+            # Enhanced title and labels
+            # plt.title('XZ Cross-Section of Intensity Distribution at Y = 0 mm', fontsize=16)
+            plt.xlabel('X (mm)', fontsize=16)
+            plt.ylabel('Z (mm)', fontsize=16)
+
+            # Increase font size for axis tick numbers
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.yticks([0, 1, 2], fontsize=14)
+            plt.xticks([-2, -1, 0, 1, 2], fontsize=14)
+            # Set axis limits, aspect ratio, and reverse z-axis
+            plt.xlim(-2.1, 2.1)
+            plt.ylim(0, 2.75)
+            # plt.ylim(0, 0.1)
+            plt.gca().set_aspect('equal')
+            plt.gca().invert_yaxis()
+            plt.tight_layout(pad=0.2)
             plt.show()
-            plt.figure(figsize=(6, 5), dpi=100)
-            plt.imshow(dots_3d[:, :, reso // 2].T, cmap=cmap, interpolation='spline36',
-                       vmin=0, vmax=max_int)
-            plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
-            plt.colorbar()
-            plt.show()
-            plt.figure(figsize=(6, 5), dpi=100)
-            plt.imshow(dots_3d[:, :, 0].T, cmap=cmap, interpolation='spline36',
-                       vmin=0, vmax=max_int)
-            plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
-            plt.colorbar()
-            plt.show()
-            # exit()
-            plt.figure(figsize=(6, 5), dpi=100)
-            plt.imshow(dots_3d[:, 4 * reso // 8, ::-1].T, cmap=cmap, interpolation='spline36',
-                       vmin=0, vmax=max_int)
-            plt.tight_layout(pad=0.1, h_pad=0.1, w_pad=0.1)
-            plt.colorbar()
-            plt.xlim(6, 215)
-            plt.show()
-            exit()
             exit()
