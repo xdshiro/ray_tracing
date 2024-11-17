@@ -202,12 +202,12 @@ if __name__ == '__main__':
             # Target crop dimensions
             target_x_min, target_x_max = -2.1, 2.1  # mm
             target_y_min, target_y_max = -2.1, 2.1  # mm
-            target_z_min, target_z_max = 0, 2.5  # mm
+            target_z_min, target_z_max = 0.5, 3  # mm
 
             # Calculate step sizes for each dimension
-            x_step = (x_max - x_min) / reso
-            y_step = (y_max - y_min) / reso
-            z_step = (z_max - z_min) / dots_3d.shape[0]
+            x_step = (x_max - x_min) / dots_3d.shape[0]
+            y_step = (y_max - y_min) / dots_3d.shape[1]
+            z_step = (z_max - z_min) / dots_3d.shape[2]
 
             # Convert real-world target coordinates to array indices
             x_start_idx = int((target_x_min - x_min) / x_step)
@@ -218,9 +218,11 @@ if __name__ == '__main__':
             z_end_idx = int((target_z_max - z_min) / z_step)
 
             # Crop the 3D array
-            dots_3d_cropped = dots_3d[z_start_idx:z_end_idx, y_start_idx:y_end_idx, x_start_idx:x_end_idx]
-            dots_3d_cropped_swapped = np.transpose(dots_3d_cropped, (2, 1, 0))
-            dots_2D = dots_3d_cropped_swapped[:, dots_3d_cropped.shape[2] // 2, :]
+            dots_3d_cropped = dots_3d[x_start_idx:x_end_idx, y_start_idx:y_end_idx, z_start_idx:z_end_idx]
+            dots_3d_cropped = dots_3d_cropped[:, :, ::-1]
+            dots_2D = dots_3d_cropped[:, dots_3d_cropped.shape[1] // 2, :]
+            # dots_2D = dots_3d_cropped[dots_3d_cropped.shape[0] // 2, :, :]
+            # dots_2D = dots_3d_cropped[:, :, dots_3d_cropped.shape[2] // 2]
             max_int = dots_3d.max()
             # Verify the shape of the cropped data
             print("Original shape:", dots_3d.shape)
@@ -229,7 +231,7 @@ if __name__ == '__main__':
             # Plot the XZ cross-section
             plt.figure(figsize=(7, 5), dpi=200)
             im = plt.imshow(
-                dots_2D,
+                dots_2D.T,
                 cmap=cmap,
                 interpolation='spline36',
                 vmin=0,
@@ -259,21 +261,21 @@ if __name__ == '__main__':
             plt.ylim(0, 2.75)
             # plt.ylim(0, 0.1)
             plt.gca().set_aspect('equal')
-            plt.gca().invert_yaxis()
+            # plt.gca().invert_yaxis()
             plt.tight_layout(pad=0.2)
             plt.show()
 
             # Create a circular mask for the cylinder
-            x = np.linspace(target_x_min, target_x_max, dots_3d_cropped_swapped.shape[0])
-            y = np.linspace(target_y_min, target_y_max, dots_3d_cropped_swapped.shape[1])
+            x = np.linspace(target_x_min, target_x_max, dots_3d_cropped.shape[0])
+            y = np.linspace(target_y_min, target_y_max, dots_3d_cropped.shape[1])
             xx, yy = np.meshgrid(x, y)
             radius = (target_x_max - target_x_min) / 2  # Radius of the cylinder
             circular_mask = (xx ** 2 + yy ** 2) <= radius ** 2
 
             # Apply the mask to each z-slice and calculate energy
             z_sums = []
-            for z_slice in range(dots_3d_cropped_swapped.shape[2]):
-                masked_slice = dots_3d_cropped_swapped[:, :, z_slice] * circular_mask
+            for z_slice in range(dots_3d_cropped.shape[2]):
+                masked_slice = dots_3d_cropped[:, :, z_slice] * circular_mask
                 z_sums.append(np.sum(masked_slice))
 
             z_sums = np.array(z_sums)
@@ -282,7 +284,7 @@ if __name__ == '__main__':
             cumulative_energy = np.cumsum(z_sums) / np.sum(z_sums) * 100
 
             # Define the z-axis range (real-world dimensions)
-            z_range = np.linspace(target_z_min, target_z_max, dots_3d_cropped_swapped.shape[2])
+            z_range = np.linspace(target_z_min, target_z_max, dots_3d_cropped.shape[2])
 
             # Plot cumulative energy distribution along the z-axis
             plt.figure(figsize=(8, 6), dpi=150)
