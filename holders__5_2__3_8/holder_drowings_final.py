@@ -185,61 +185,51 @@ if __name__ == '__main__':
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
             # dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ13_dist_{dist}_foc_{focus}_rfoc_{r_foc}_221_{total}_r{r}_{name}.npy')
-            dots_3d = np.load(f'..\\holders__5_2__3_8\\Z7_2_dist_7.1_foc_4.6_rfoc_0.0_221_2000000_r2.5_15n14even.npy')
-            dots_3d = np.load(f'..\\holders__5_2__3_8\\abs_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
+            # dots_3d = np.load(f'..\\holders__5_2__3_8\\Z7_2_dist_7.1_foc_4.6_rfoc_0.0_221_2000000_r2.5_15n14even.npy')
+            # dots_3d = np.load(f'..\\holders__5_2__3_8\\abs_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
             # dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
             # dots_3d = np.load(f'..\\holders__5_2__3_8\\ RZ13_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
+            # Load and process the 3D intensity data
+            dots_3d = np.load(r'..\holders__5_2__3_8\ RZ13_2_dist_7.1_foc_4.6_rfoc_0.0_221_40000_r2.5_15n14even.npy')
             reso = 221
-            dots_3d = gaussian_filter(dots_3d, sigma=2)
-            # dots_3d = np.sqrt(dots_3d * 2)
-            dots_3d = dots_3d
-            max_int = dots_3d.max()
+            dots_3d = gaussian_filter(dots_3d, sigma=1)
 
             # Define real-world dimensions
-            x_min, x_max = -2.23, 2.23  # in mm for X axis
-            y_min, y_max = -2.23, 2.23  # in mm for Y axis in XY cross-sections
-            z_min, z_max = -0.05, 2.5+0.5  # in mm for Z axis in XZ cross-section
+            x_min, x_max = -2.2, 2.2  # mm (original full x range)
+            y_min, y_max = -2.2, 2.2  # mm (original full y range)
+            z_min, z_max = 0, 3.0  # mm (original full z range)
 
-            # # Plot the last XY layer
-            # plt.figure(figsize=(6, 5), dpi=100)
-            # plt.imshow(dots_3d[:, :, -1].T, cmap=cmap, interpolation='spline36', vmin=0, vmax=max_int,
-            #            extent=(x_min, x_max, y_min, y_max))
-            # plt.colorbar()
-            # plt.title('XY Cross-Section at End Layer', fontsize=14)
-            # plt.xlabel('X Axis (mm)', fontsize=12)
-            # plt.ylabel('Y Axis (mm)', fontsize=12)
-            # plt.gca().set_aspect('equal')
-            # plt.tight_layout(pad=0.1)
-            # plt.show()
-            #
-            # # Plot the middle XY layer
-            # plt.figure(figsize=(6, 5), dpi=100)
-            # plt.imshow(dots_3d[:, :, reso // 2].T, cmap=cmap, interpolation='spline36', vmin=0, vmax=max_int,
-            #            extent=(x_min, x_max, y_min, y_max))
-            # plt.colorbar()
-            # plt.title('XY Cross-Section at Middle Layer', fontsize=14)
-            # plt.xlabel('X Axis (mm)', fontsize=12)
-            # plt.ylabel('Y Axis (mm)', fontsize=12)
-            # plt.gca().set_aspect('equal')
-            # plt.tight_layout(pad=0.1)
-            # plt.show()
-            #
-            # # Plot the first XY layer
-            # plt.figure(figsize=(6, 5), dpi=100)
-            # plt.imshow(dots_3d[:, :, 0].T, cmap=cmap, interpolation='spline36', vmin=0, vmax=max_int,
-            #            extent=(x_min, x_max, y_min, y_max))
-            # plt.colorbar()
-            # plt.title('XY Cross-Section at Start Layer', fontsize=14)
-            # plt.xlabel('X Axis (mm)', fontsize=12)
-            # plt.ylabel('Y Axis (mm)', fontsize=12)
-            # plt.gca().set_aspect('equal')
-            # plt.tight_layout(pad=0.1)
-            # plt.show()
+            # Target crop dimensions
+            target_x_min, target_x_max = -2.1, 2.1  # mm
+            target_y_min, target_y_max = -2.1, 2.1  # mm
+            target_z_min, target_z_max = 0, 2.5  # mm
+
+            # Calculate step sizes for each dimension
+            x_step = (x_max - x_min) / reso
+            y_step = (y_max - y_min) / reso
+            z_step = (z_max - z_min) / dots_3d.shape[0]
+
+            # Convert real-world target coordinates to array indices
+            x_start_idx = int((target_x_min - x_min) / x_step)
+            x_end_idx = int((target_x_max - x_min) / x_step)
+            y_start_idx = int((target_y_min - y_min) / y_step)
+            y_end_idx = int((target_y_max - y_min) / y_step)
+            z_start_idx = int((target_z_min - z_min) / z_step)
+            z_end_idx = int((target_z_max - z_min) / z_step)
+
+            # Crop the 3D array
+            dots_3d_cropped = dots_3d[z_start_idx:z_end_idx, y_start_idx:y_end_idx, x_start_idx:x_end_idx]
+            dots_3d_cropped_swapped = np.transpose(dots_3d_cropped, (2, 1, 0))
+            dots_2D = dots_3d_cropped_swapped[:, dots_3d_cropped.shape[2] // 2, :]
+            max_int = dots_3d.max()
+            # Verify the shape of the cropped data
+            print("Original shape:", dots_3d.shape)
+            print("Cropped shape:", dots_3d_cropped.shape)
 
             # Plot the XZ cross-section
             plt.figure(figsize=(7, 5), dpi=200)
             im = plt.imshow(
-                dots_3d[:, 4 * reso // 8, ::].T,
+                dots_2D,
                 cmap=cmap,
                 interpolation='spline36',
                 vmin=0,
@@ -271,5 +261,43 @@ if __name__ == '__main__':
             plt.gca().set_aspect('equal')
             plt.gca().invert_yaxis()
             plt.tight_layout(pad=0.2)
+            plt.show()
+
+            # Create a circular mask for the cylinder
+            x = np.linspace(target_x_min, target_x_max, dots_3d_cropped_swapped.shape[0])
+            y = np.linspace(target_y_min, target_y_max, dots_3d_cropped_swapped.shape[1])
+            xx, yy = np.meshgrid(x, y)
+            radius = (target_x_max - target_x_min) / 2  # Radius of the cylinder
+            circular_mask = (xx ** 2 + yy ** 2) <= radius ** 2
+
+            # Apply the mask to each z-slice and calculate energy
+            z_sums = []
+            for z_slice in range(dots_3d_cropped_swapped.shape[2]):
+                masked_slice = dots_3d_cropped_swapped[:, :, z_slice] * circular_mask
+                z_sums.append(np.sum(masked_slice))
+
+            z_sums = np.array(z_sums)
+
+            # Normalize to get cumulative energy percentage
+            cumulative_energy = np.cumsum(z_sums) / np.sum(z_sums) * 100
+
+            # Define the z-axis range (real-world dimensions)
+            z_range = np.linspace(target_z_min, target_z_max, dots_3d_cropped_swapped.shape[2])
+
+            # Plot cumulative energy distribution along the z-axis
+            plt.figure(figsize=(8, 6), dpi=150)
+            plt.plot(z_range, cumulative_energy, label='Cumulative Energy (%)', color='blue')
+            plt.axhline(100, color='gray', linestyle='--', linewidth=0.8, label='Maximum Energy')
+            plt.axhline(0, color='gray', linestyle='--', linewidth=0.8)
+
+            # Add labels and title
+            plt.xlabel('Z (mm)', fontsize=14)
+            plt.ylabel('Cumulative Energy (%)', fontsize=14)
+            plt.title('Cumulative Energy Distribution Along Z-axis (Cylinder)', fontsize=16)
+            plt.xticks(fontsize=12)
+            plt.yticks(fontsize=12)
+            plt.legend(fontsize=12)
+            plt.grid(alpha=0.3)
+            plt.tight_layout()
             plt.show()
             exit()

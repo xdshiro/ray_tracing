@@ -769,7 +769,7 @@ if __name__ == '__main__':
 		# print('hi')
 		scene = pv_scene_real(absor=1. / L_A, scat=1. / L_S, focus=focus)
 		number_rays = 3000000
-		number_rays =4000000
+		number_rays =40000
 		# continue
 		x_res, y_res, z_res = 221, 221, 221
 		print(
