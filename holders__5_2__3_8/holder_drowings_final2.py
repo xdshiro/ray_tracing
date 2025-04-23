@@ -4,7 +4,7 @@ from scipy.ndimage import gaussian_filter
 import pickle
 import collections
 
-
+import pandas as pd
 def plane_intensity(positions, plane_vec=(3, 2, 1), plane_dot=(1, 2, 3), x_res=21, y_res=21,
                     x_max_min=(-1, 1), y_max_min=(-1, 1), positive=True, negative=True):
     """
@@ -185,15 +185,16 @@ if __name__ == '__main__':
         if intensity_dots:
             # dots_3d = np.load('Z7_221_150.npy')
             # dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ13_dist_{dist}_foc_{focus}_rfoc_{r_foc}_221_{total}_r{r}_{name}.npy')
-            # dots_3d = np.load(f'..\\holders__5_2__3_8\\Z7_2_dist_7.1_foc_4.6_rfoc_0.0_221_2000000_r2.5_15n14even.npy')
+            dots_3d = 2 * np.load(f'..\\holders__5_2__3_8\\Z7_2_dist_7.1_foc_4.6_rfoc_0.0_221_2000000_r2.5_15n14even.npy')
             # dots_3d = np.load(f'..\\holders__5_2__3_8\\abs_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
             dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ11_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
-            # dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ13_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
+            dots_3d = np.load(f'..\\holders__5_2__3_8\\RZ13_2_dist_7.1_foc_4.6_rfoc_0.0_221_4000000_r2.5_15n14even.npy')
             # Load and process the 3D intensity data
-            # dots_3d = np.load(r'..\holders__5_2__3_8\RZ13_2_dist_7.1_foc_4.6_rfoc_0.0_221_40000_r2.5_15n14even.npy')
+            # dots_3d = np.load(r'..\holders__5_2__3_8\ RZ13_2_dist_7.1_foc_4.6_rfoc_0.0_221_40000_r2.5_15n14even.npy')
+
             reso = 221
             dots_3d = gaussian_filter(dots_3d, sigma=2)
-
+            name = 'RZ13'
             # Define real-world dimensions
             x_min, x_max = -2.2, 2.2  # mm (original full x range)
             y_min, y_max = -2.2, 2.2  # mm (original full y range)
@@ -219,11 +220,18 @@ if __name__ == '__main__':
 
             # Crop the 3D array
             dots_3d_cropped = dots_3d[x_start_idx:x_end_idx, y_start_idx:y_end_idx, z_start_idx:z_end_idx]
+            # dots_3d_cropped = dots_3d[x_start_idx:x_end_idx, y_start_idx:y_end_idx, :]
             dots_3d_cropped = dots_3d_cropped[:, :, ::-1]
+            print(dots_3d_cropped.shape)
+            exit()
             dots_2D = dots_3d_cropped[:, dots_3d_cropped.shape[1] // 2, :]
+            dots_2D = dots_2D[:, :-2] / dots_2D.max() * 100
+            # dots_2D = dots_2D[:, :-2]
+            max_int = dots_2D.max()
+            # max_int = 100
             # dots_2D = dots_3d_cropped[dots_3d_cropped.shape[0] // 2, :, :]
             # dots_2D = dots_3d_cropped[:, :, dots_3d_cropped.shape[2] // 2]
-            max_int = dots_3d.max()
+            # max_int = dots_3d.max()
             # Verify the shape of the cropped data
             print("Original shape:", dots_3d.shape)
             print("Cropped shape:", dots_3d_cropped.shape)
@@ -241,8 +249,11 @@ if __name__ == '__main__':
 
             # Improved colorbar with larger font for min and max labels
             cbar = plt.colorbar(im, fraction=0.031, pad=0.01)
-            cbar.set_ticks([0, max_int])  # Show only min and max values
-            # cbar.set_ticklabels(['Min', 'Max'])  # Label as "Min" and "Max"
+            # cbar.set_ticks([0, max_int])  # Show only min and max values
+            # cbar.set_ticks([0, 50, 100, 150])  # Show o, '100%'nly min and max values
+            cbar.set_ticks([0, 50, 100])  # Show o, '100%'nly min and max values
+            # cbar.set_ticklabels(['0%', '50%', '100%', '150%'])  # Label as "Min" and "Max"
+            cbar.set_ticklabels(['0%', '50%', '100%'])  # Label as "Min" and "Max"
             cbar.ax.tick_params(labelsize=14)  # Increase font size for Min/Max labels
             # cbar.set_label('Intensity', fontsize=14)
 
@@ -302,4 +313,15 @@ if __name__ == '__main__':
             plt.grid(alpha=0.3)
             plt.tight_layout()
             plt.show()
+
+
+            # Save z_range and cumulative_energy to CSV and Excel
+            energy_data = pd.DataFrame({'Z (mm)': z_range, 'Cumulative Energy (%)': cumulative_energy})
+            energy_data.to_csv(f'cumulative_energy_{name}.csv', index=False)
+            energy_data.to_excel(f'cumulative_energy_{name}.xlsx', index=False, engine='openpyxl')
+
+            # Save dots_2D.T to CSV and Excel
+            dots_2D_df = pd.DataFrame(dots_2D.T)
+            dots_2D_df.to_csv(f'dots_2D_{name}.csv', index=False, header=False)
+            dots_2D_df.to_excel(f'dots_2D_{name}.xlsx', index=False, header=False, engine='openpyxl')
             exit()
